@@ -36,7 +36,7 @@ func (k Keeper) SwapExecution(ctx sdk.Context, liquidityPoolBatch types.Liquidit
 	fmt.Println("orderbook before batch")
 	orderBookValidity := types.CheckValidityOrderBook(orderBook, currentYPriceOverX)
 	result := types.ComputePriceDirection(X, Y, currentYPriceOverX, orderBook)
-	fmt.Println("priceDirection: ", result)
+	fmt.Println("batch Result before", result)
 
 	// find order match, calculate pool delta with the total x, y amount for the invariant check
 	fmt.Println("before XtoY, YtoX", len(XtoY), len(YtoX))

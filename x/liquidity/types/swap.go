@@ -288,8 +288,8 @@ func FindOrderMatch(direction int, swapList []BatchPoolSwapMsg, executableAmt, s
 				} else {
 					fractionalMatchRatio = sdk.OneDec()
 				}
-				if fractionalMatchRatio.IsPositive() {
-					for _, matchOrder := range matchOrderList {
+				for _, matchOrder := range matchOrderList {
+					if fractionalMatchRatio.IsPositive() {
 						orderAmt := matchOrder.Msg.OfferCoin.Amount.ToDec()
 						matchResult := MatchResult{
 							OrderHeight:       height,
@@ -304,7 +304,7 @@ func FindOrderMatch(direction int, swapList []BatchPoolSwapMsg, executableAmt, s
 						}
 						matchResult.ResidualAmt = matchResult.OrderAmt.Sub(matchResult.MatchedAmt).Sub(matchResult.RefundAmt)
 
-						if matchOrder.Msg.OfferCoin.Amount.Sub(matchResult.MatchedAmt).LT(sdk.OneInt()) {
+						if matchOrder.Msg.OfferCoin.Amount.Sub(matchResult.MatchedAmt).LT(sdk.OneInt()) {  // TODO: decimal error
 							// full match
 							matchedOrderMsgIndexList = append(matchedOrderMsgIndexList, matchOrder.MsgIndex)
 						} else {
@@ -358,7 +358,7 @@ func FindOrderMatch(direction int, swapList []BatchPoolSwapMsg, executableAmt, s
 	return
 }
 
-// TODO: find and fix decimal errors
+// TODO: find and fix decimal errors, SwapPrice, TransactAmt
 // Calculates the batch results with the processing logic for each direction
 func CalculateSwap(direction int, X, Y, orderPrice, lastOrderPrice sdk.Dec, orderBook OrderBook) (r BatchResult) {
 	r = NewBatchResult()
@@ -367,7 +367,14 @@ func CalculateSwap(direction int, X, Y, orderPrice, lastOrderPrice sdk.Dec, orde
 	r.EY = r.OriginalEY.ToDec()
 
 	//r.SwapPrice = X.Add(r.EX).Quo(Y.Add(r.EY)) // legacy constant product model
-	r.SwapPrice = X.Add(r.EX.MulInt64(2)).Quo(Y.Add(r.EY.MulInt64(2))) // newSwapPriceModel
+	r.SwapPrice = X.Add(r.EX.MulInt64(2)).Quo(Y.Add(r.EY.MulInt64(2))) // newSwapPriceModel  // TODO: decimal err
+	a := r.EX.MulInt64(2)
+	b := r.EY.MulInt64(2)
+	c := X.Add(r.EX.MulInt64(2))
+	d := Y.Add(r.EY.MulInt64(2))
+	e := X.Add(r.EX.MulInt64(2)).Quo(Y.Add(r.EY.MulInt64(2)))
+	fmt.Println(a,b,c,d, e)
+
 
 	if direction == Increase {
 		//r.PoolY = Y.Sub(X.Quo(r.SwapPrice))  // legacy constant product model
@@ -411,22 +418,30 @@ func CalculateSwap(direction int, X, Y, orderPrice, lastOrderPrice sdk.Dec, orde
 	}
 
 	if direction == Increase {
-		//r.PoolY = Y.Sub(X.Quo(r.SwapPrice))
-		r.PoolY = r.SwapPrice.Mul(Y).Sub(X).Quo(r.SwapPrice.MulInt64(2)) // newSwapPriceModel
+		//r.PoolY = Y.Sub(X.Quo(r.SwapPrice))  // legacy constant product model
+		//r.PoolY = r.SwapPrice.Mul(Y).Sub(X).Quo(r.SwapPrice.MulInt64(2)) // newSwapPriceModel
 		if r.SwapPrice.LT(X.Quo(Y)) || r.PoolY.IsNegative() {
 			r.TransactAmt = sdk.ZeroDec()
 		} else {
-			r.TransactAmt = MinDec(r.EX, r.EY.Add(r.PoolY).Mul(r.SwapPrice))
+			r.TransactAmt = MinDec(r.EX, r.EY.Add(r.PoolY).MulTruncate(r.SwapPrice))
+			fmt.Println(r.EX, r.EY.Add(r.PoolY), r.EY.Add(r.PoolY).MulTruncate(r.SwapPrice))
 		}
 	} else if direction == Decrease {
-		//r.PoolX = X.Sub(Y.Mul(r.SwapPrice))
+		//r.PoolX = X.Sub(Y.Mul(r.SwapPrice))  // legacy constant product model
+		//r.PoolX = (X.Sub(r.SwapPrice.Mul(Y))).QuoInt64(2) // newSwapPriceModel
 		if r.SwapPrice.GT(X.Quo(Y)) || r.PoolX.IsNegative() {
 			r.TransactAmt = sdk.ZeroDec()
 		} else {
-			r.TransactAmt = MinDec(r.EY, r.EX.Add(r.PoolX).Quo(r.SwapPrice))
+			r.TransactAmt = MinDec(r.EY, r.EX.Add(r.PoolX).QuoTruncate(r.SwapPrice))
+			fmt.Println(r.EY, r.EX.Add(r.PoolX), r.EX.Add(r.PoolX).QuoTruncate(r.SwapPrice))
 		}
 	}
 
+	if r.MatchType == ExactMatch {
+		if !r.EX.Equal(r.TransactAmt) && !r.EY.Equal(r.TransactAmt) {
+			fmt.Println("invariant decimal@@@@", !r.EX.Equal(r.TransactAmt), !r.EY.Equal(r.TransactAmt), r.EX, r.EY, r.TransactAmt, r.TransactAmt.TruncateInt())
+		}
+	}
 	return
 }
 
@@ -441,6 +456,8 @@ func CalculateMatch(direction int, X, Y, currentPrice sdk.Dec, orderBook OrderBo
 			continue
 		} else {
 			orderPrice := order.OrderPrice
+
+
 			r := CalculateSwap(direction, X, Y, orderPrice, lastOrderPrice, orderBook)
 			matchScenarioList = append(matchScenarioList, r)
 			lastOrderPrice = orderPrice

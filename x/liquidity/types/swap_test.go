@@ -149,22 +149,22 @@ func TestComputePriceDirection(t *testing.T) {
 
 	// decrease case
 	orderMap := make(OrderMap)
-	a, _ := sdk.NewDecFromStr("0.1")
-	b, _ := sdk.NewDecFromStr("0.2")
-	c, _ := sdk.NewDecFromStr("0.3")
+	a, _ := sdk.NewDecFromStr("2.0")
+	b, _ := sdk.NewDecFromStr("2.1")
+	c, _ := sdk.NewDecFromStr("1.9")
 	orderMap[a] = OrderByPrice{
 		OrderPrice:   a,
 		BuyOrderAmt:  sdk.ZeroInt(),
-		SellOrderAmt: sdk.NewInt(3),
+		SellOrderAmt: sdk.NewInt(3000000),
 	}
 	orderMap[b] = OrderByPrice{
 		OrderPrice:   b,
-		BuyOrderAmt:  sdk.NewInt(9),
+		BuyOrderAmt:  sdk.NewInt(9000000),
 		SellOrderAmt: sdk.ZeroInt(),
 	}
 	orderMap[c] = OrderByPrice{
 		OrderPrice:   c,
-		BuyOrderAmt:  sdk.NewInt(5),
+		BuyOrderAmt:  sdk.NewInt(5000000),
 		SellOrderAmt: sdk.ZeroInt(),
 	}
 	// make orderbook to sort orderMap
@@ -183,16 +183,16 @@ func TestComputePriceDirection(t *testing.T) {
 	orderMap[c] = OrderByPrice{
 		OrderPrice:   c,
 		BuyOrderAmt:  sdk.ZeroInt(),
-		SellOrderAmt: sdk.NewInt(3),
+		SellOrderAmt: sdk.NewInt(1000000),
 	}
 	orderMap[b] = OrderByPrice{
 		OrderPrice:   b,
-		BuyOrderAmt:  sdk.NewInt(9),
+		BuyOrderAmt:  sdk.NewInt(4000000),
 		SellOrderAmt: sdk.ZeroInt(),
 	}
 	orderMap[a] = OrderByPrice{
 		OrderPrice:   a,
-		BuyOrderAmt:  sdk.NewInt(5),
+		BuyOrderAmt:  sdk.NewInt(7000000),
 		SellOrderAmt: sdk.ZeroInt(),
 	}
 	// make orderbook to sort orderMap
