@@ -40,17 +40,25 @@ func (k Keeper) SwapExecution(ctx sdk.Context, liquidityPoolBatch types.Liquidit
 
 	// find order match, calculate pool delta with the total x, y amount for the invariant check
 	fmt.Println("before XtoY, YtoX", len(XtoY), len(YtoX))
+	beforeXtoYLen := len(XtoY)
+	beforeYtoXLen := len(YtoX)
 	matchResultXtoY, _, poolXDeltaXtoY, poolYDeltaXtoY := types.FindOrderMatch(types.DirectionXtoY, XtoY, result.EX, result.SwapPrice, params.SwapFeeRate, ctx.BlockHeight())
 	matchResultYtoX, _, poolXDeltaYtoX, poolYDeltaYtoX := types.FindOrderMatch(types.DirectionYtoX, YtoX, result.EY, result.SwapPrice, params.SwapFeeRate, ctx.BlockHeight())
 	poolXdelta := poolXDeltaXtoY.Add(poolXDeltaYtoX)
 	poolYdelta := poolYDeltaXtoY.Add(poolYDeltaYtoX)
 
 	fmt.Println("mid XtoY, YtoX", len(XtoY), len(YtoX), len(matchResultXtoY), len(matchResultYtoX))
-	XtoY, YtoX, X, Y, poolXdelta2, poolYdelta2 := types.UpdateState(X, Y, XtoY, YtoX, matchResultXtoY, matchResultYtoX)
+	XtoY, YtoX, X, Y, poolXdelta2, poolYdelta2, fractionalCntX, fractionalCntY := types.UpdateState(X, Y, XtoY, YtoX, matchResultXtoY, matchResultYtoX)
 
 	//fmt.Println(result, matchResultXtoY, matchResultYtoX, poolXdelta, poolYdelta, poolXdelta2, poolYdelta2)
 	//fmt.Println(result.SwapPrice, X, Y, currentYPriceOverX)
 	fmt.Println("after XtoY, YtoX", len(XtoY), len(YtoX), len(matchResultXtoY), len(matchResultYtoX))
+	if beforeXtoYLen-len(matchResultXtoY)+fractionalCntX != len(XtoY){
+		fmt.Println("!! match invariant Fail X")
+	}
+	if beforeYtoXLen-len(matchResultYtoX)+fractionalCntY != len(YtoX){
+		fmt.Println("!! match invariant Fail Y")
+	}
 
 	totalAmtX := sdk.ZeroInt()
 	totalAmtY := sdk.ZeroInt()
@@ -74,8 +82,8 @@ func (k Keeper) SwapExecution(ctx sdk.Context, liquidityPoolBatch types.Liquidit
 	invariantCheckX = invariantCheckX.Add(totalAmtX)
 	invariantCheckY = invariantCheckY.Add(totalAmtY)
 
-	invariantCheckX = invariantCheckX.Add(poolXdelta2)
-	invariantCheckY = invariantCheckY.Add(poolYdelta2)
+	invariantCheckX = invariantCheckX.Add(poolXdelta)  // TODO: compare with pooldelta2
+	invariantCheckY = invariantCheckY.Add(poolYdelta)
 
 	// print the invariant check and validity with swap, match result
 	if invariantCheckX.IsZero() && invariantCheckY.IsZero() {
