@@ -19,7 +19,7 @@ func getRandPoolAmt(r *rand.Rand) (X, Y sdk.Int) {
 }
 
 func TestSimulationSwapExecution(t *testing.T) {
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10000; i++ {
 		TestSwapExecution(t)
 	}
 }
@@ -38,9 +38,9 @@ func TestSwapExecution(t *testing.T) {
 	denoms := []string{denomX, denomY}
 
 	// get random X, Y amount for create pool
-	//X, Y := getRandPoolAmt(r)
-	X := sdk.NewInt(100000000000) // TODO: tmp fix
-	Y := sdk.NewInt(100000000000) // TODO: tmp fix
+	X, Y := getRandPoolAmt(r)
+	//X := sdk.NewInt(100000000000) // TODO: tmp fix
+	//Y := sdk.NewInt(100000000000) // TODO: tmp fix
 	deposit := sdk.NewCoins(sdk.NewCoin(denomX, X), sdk.NewCoin(denomY, Y))
 	fmt.Println("-------------------------------------------------------")
 	fmt.Println("X/Y", X.ToDec().Quo(Y.ToDec()), "X", X, "Y", Y)

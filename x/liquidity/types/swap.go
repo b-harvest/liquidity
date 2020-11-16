@@ -196,8 +196,8 @@ func CheckValidityOrderBook(orderBook OrderBook, currentPrice sdk.Dec) bool {
 	fmt.Println(maxBuyOrderPrice.GT(minSellOrderPrice), maxBuyOrderPrice.Quo(currentPrice).GT(oneOverWithErr), minSellOrderPrice.Quo(currentPrice).LT(oneUnderWithErr))
 	fmt.Println(maxBuyOrderPrice, minSellOrderPrice, currentPrice)
 	fmt.Println(maxBuyOrderPrice.Quo(currentPrice), minSellOrderPrice.Quo(currentPrice))
-	//if maxBuyOrderPrice.GT(minSellOrderPrice) || maxBuyOrderPrice.Quo(currentPrice).GT(oneOverWithErr) || minSellOrderPrice.Quo(currentPrice).LT(oneUnderWithErr) {
-	if maxBuyOrderPrice.GT(minSellOrderPrice) {
+	if maxBuyOrderPrice.GT(minSellOrderPrice) || maxBuyOrderPrice.Quo(currentPrice).GT(oneOverWithErr) || minSellOrderPrice.Quo(currentPrice).LT(oneUnderWithErr) {
+	//if maxBuyOrderPrice.GT(minSellOrderPrice) {
 		return false
 	} else {
 		return true
@@ -273,7 +273,7 @@ func UpdateState(X, Y sdk.Dec, XtoY, YtoX []BatchPoolSwapMsg, matchResultXtoY, m
 			if match.OrderMsgIndex == order.MsgIndex {
 				poolXdelta = poolXdelta.Add(match.MatchedAmt)
 				poolYdelta = poolYdelta.Sub(match.ReceiveAmt)
-				if order.Msg.OfferCoin.Amount.Sub(match.MatchedAmt.Add(match.ResidualAmt)).LT(sdk.OneInt()) {  // TODO: ResidualAmt
+				if order.Msg.OfferCoin.Amount.Equal(match.MatchedAmt) {  // TODO: ResidualAmt
 					// full match
 					matchedOrderMsgIndexListXtoY = append(matchedOrderMsgIndexListXtoY, order.MsgIndex)
 				} else {
@@ -312,9 +312,9 @@ func UpdateState(X, Y sdk.Dec, XtoY, YtoX []BatchPoolSwapMsg, matchResultXtoY, m
 	for _, match := range matchResultYtoX {
 		for _, order := range YtoX {
 			if match.OrderMsgIndex == order.MsgIndex {
-				poolXdelta = poolXdelta.Add(match.MatchedAmt)
-				poolYdelta = poolYdelta.Sub(match.ReceiveAmt)
-				if order.Msg.OfferCoin.Amount.Sub(match.MatchedAmt.Add(match.ResidualAmt)).LT(sdk.OneInt()) {  // TODO: ResidualAmt
+				poolXdelta = poolXdelta.Sub(match.ReceiveAmt)
+				poolYdelta = poolYdelta.Add(match.MatchedAmt)
+				if order.Msg.OfferCoin.Amount.Equal(match.MatchedAmt) {  // TODO: ResidualAmt
 					// full match
 					matchedOrderMsgIndexListYtoX = append(matchedOrderMsgIndexListYtoX, order.MsgIndex)
 				} else {
@@ -378,6 +378,11 @@ func FindOrderMatch(direction int, swapList []BatchPoolSwapMsg, executableAmt sd
 	var matchOrderList []BatchPoolSwapMsg
 	//matchedIndexMap := make(map[uint64]sdk.Coin)
 
+	fmt.Println("executableAmt", executableAmt)
+	if executableAmt.IsZero() {
+		return
+	}
+
 	lenSwapList := len(swapList)
 	for i, order := range swapList {
 		var breakFlag, appendFlag bool
@@ -391,7 +396,7 @@ func FindOrderMatch(direction int, swapList []BatchPoolSwapMsg, executableAmt sd
 
 		// case check
 		if lenSwapList > i+1 { // check next order exist
-			if swapList[i+1].Msg.OrderPrice == order.Msg.OrderPrice { // check next orderPrice is same
+			if swapList[i+1].Msg.OrderPrice.Equal(order.Msg.OrderPrice) { // check next orderPrice is same
 				breakFlag = false
 				appendFlag = false
 			} else { // next orderPrice is new
@@ -428,12 +433,27 @@ func FindOrderMatch(direction int, swapList []BatchPoolSwapMsg, executableAmt sd
 							OrderMsgIndex:     matchOrder.MsgIndex,
 							OrderPrice:        matchOrder.Msg.OrderPrice,
 							OrderAmt:          matchOrder.Msg.OfferCoin.Amount,
-							MatchedAmt:        orderAmt.Mul(fractionalMatchRatio).TruncateInt(),
-							RefundAmt:         orderAmt.Mul(sdk.OneDec().Sub(fractionalMatchRatio)).TruncateInt(),
-							ReceiveAmt:        orderAmt.Mul(fractionalMatchRatio).Quo(swapPrice).TruncateInt(),
-							FeeAmt:            orderAmt.Mul(fractionalMatchRatio).Quo(swapPrice).Mul(swapFeeRate).TruncateInt(),
+							MatchedAmt:        orderAmt.Mul(fractionalMatchRatio).Ceil().TruncateInt(),
+							//RefundAmt:         orderAmt.Mul(sdk.OneDec().Sub(fractionalMatchRatio)).TruncateInt(),
+							//ReceiveAmt:        orderAmt.Mul(fractionalMatchRatio).Quo(swapPrice).TruncateInt(),
+							//FeeAmt:            orderAmt.Mul(fractionalMatchRatio).Quo(swapPrice).Mul(swapFeeRate).Ceil().TruncateInt(),
 						}
-						matchResult.ResidualAmt = matchResult.OrderAmt.Sub(matchResult.MatchedAmt).Sub(matchResult.RefundAmt)
+						if direction == DirectionXtoY {
+							matchResult.ReceiveAmt = orderAmt.Mul(fractionalMatchRatio).Quo(swapPrice).TruncateInt()
+							matchResult.FeeAmt = orderAmt.Mul(fractionalMatchRatio).Quo(swapPrice).Mul(swapFeeRate).Ceil().TruncateInt()
+						} else if direction == DirectionYtoX {
+							matchResult.ReceiveAmt = orderAmt.Mul(fractionalMatchRatio).Mul(swapPrice).TruncateInt()
+							matchResult.FeeAmt = orderAmt.Mul(fractionalMatchRatio).Mul(swapPrice).Mul(swapFeeRate).Ceil().TruncateInt()
+						}
+						if matchResult.MatchedAmt.GT(matchResult.OrderAmt) || matchResult.FeeAmt.GT(matchResult.ReceiveAmt){
+							fmt.Println("panic(matchResult.MatchedAmt)", matchResult)
+							panic(matchResult.MatchedAmt)
+						}
+						//matchResult.ResidualAmt = matchResult.OrderAmt.Sub(matchResult.MatchedAmt).Sub(matchResult.RefundAmt)
+						// TODO: expand Residual Struct
+						//matchResult.ResidualAmtOfferCoin = matchResult.OrderAmt.Sub(matchResult.MatchedAmt).Sub(matchResult.RefundAmt)
+						//matchResult.ResidualAmtDemandCoin = matchResult.OrderAmt.Sub(orderAmt.Mul(fractionalMatchRatio).Quo(swapPrice)).Sub(matchResult.ReceiveAmt)
+
 						//if matchResult.ReceiveAmt.GT(matchResult.MatchedAmt){
 						//	fmt.Println("!!! matchResult.ReceiveAmt.GT(matchResult.MatchedAmt)", matchResult.ReceiveAmt, matchResult.MatchedAmt, fractionalMatchRatio, swapPrice, orderAmt.Mul(fractionalMatchRatio), orderAmt.Mul(fractionalMatchRatio).Quo(swapPrice))
 						//}
@@ -502,18 +522,18 @@ func CalculateSwap(direction int, X, Y, orderPrice, lastOrderPrice sdk.Dec, orde
 
 	//r.SwapPrice = X.Add(r.EX).Quo(Y.Add(r.EY)) // legacy constant product model
 	r.SwapPrice = X.Add(r.EX.MulRaw(2).ToDec()).Quo(Y.Add(r.EY.MulRaw(2).ToDec())) // newSwapPriceModel  // TODO: decimal err
-	a := r.EX.MulRaw(2)
-	b := r.EY.MulRaw(2)
-	c := X.Add(r.EX.MulRaw(2).ToDec())
-	d := Y.Add(r.EY.MulRaw(2).ToDec())
-	e := X.Add(r.EX.MulRaw(2).ToDec()).Quo(Y.Add(r.EY.MulRaw(2).ToDec()))
-	fmt.Println("SwapPrice calc",a,b,c,d,e)
+	//a := r.EX.MulRaw(2)
+	//b := r.EY.MulRaw(2)
+	//c := X.Add(r.EX.MulRaw(2).ToDec())
+	//d := Y.Add(r.EY.MulRaw(2).ToDec())
+	//e := X.Add(r.EX.MulRaw(2).ToDec()).Quo(Y.Add(r.EY.MulRaw(2).ToDec()))
+	//fmt.Println("SwapPrice calc",a,b,c,d,e)
 
 
 	if direction == Increase {
 		//r.PoolY = Y.Sub(X.Quo(r.SwapPrice))  // legacy constant product model
 		r.PoolY = r.SwapPrice.Mul(Y).Sub(X).Quo(r.SwapPrice.MulInt64(2)).TruncateInt() // newSwapPriceModel
-		fmt.Println("r.PoolY calc", r.SwapPrice.Mul(Y), r.SwapPrice.Mul(Y).Sub(X), r.SwapPrice.MulInt64(2), r.SwapPrice.Mul(Y).Sub(X).Quo(r.SwapPrice.MulInt64(2)), r.SwapPrice.Mul(Y).Sub(X).Quo(r.SwapPrice.MulInt64(2)).TruncateInt())
+		//fmt.Println("r.PoolY calc", r.SwapPrice.Mul(Y), r.SwapPrice.Mul(Y).Sub(X), r.SwapPrice.MulInt64(2), r.SwapPrice.Mul(Y).Sub(X).Quo(r.SwapPrice.MulInt64(2)), r.SwapPrice.Mul(Y).Sub(X).Quo(r.SwapPrice.MulInt64(2)).TruncateInt())
 		if lastOrderPrice.LT(r.SwapPrice) && r.SwapPrice.LT(orderPrice) && !r.PoolY.IsNegative() {
 			if r.EX.IsZero() && r.EY.IsZero() {
 				r.MatchType = NoMatch
@@ -541,13 +561,13 @@ func CalculateSwap(direction int, X, Y, orderPrice, lastOrderPrice sdk.Dec, orde
 		if direction == Increase {
 			//r.PoolY = Y.Sub(X.Quo(r.SwapPrice))  // legacy constant product model
 			r.PoolY = r.SwapPrice.Mul(Y).Sub(X).Quo(r.SwapPrice.MulInt64(2)).TruncateInt() // newSwapPriceModel
-			r.EX = MinDec(r.EX.ToDec(), r.EY.Add(r.PoolY).ToDec().Mul(r.SwapPrice)).TruncateInt()
-			r.EY = MaxDec(MinDec(r.EY.ToDec(), r.EX.ToDec().Quo(r.SwapPrice).Sub(r.PoolY.ToDec())), sdk.ZeroDec()).TruncateInt()
+			r.EX = MinDec(r.EX.ToDec(), r.EY.Add(r.PoolY).ToDec().Mul(r.SwapPrice)).Ceil().TruncateInt()
+			r.EY = MaxDec(MinDec(r.EY.ToDec(), r.EX.ToDec().Quo(r.SwapPrice).Sub(r.PoolY.ToDec())), sdk.ZeroDec()).Ceil().TruncateInt()
 		} else if direction == Decrease {
 			//r.PoolX = X.Sub(Y.Mul(r.SwapPrice)) // legacy constant product model
 			r.PoolX = X.Sub(r.SwapPrice.Mul(Y)).QuoInt64(2).TruncateInt() // newSwapPriceModel
-			r.EY = MinDec(r.EY.ToDec(), r.EX.Add(r.PoolX).ToDec().Quo(r.SwapPrice)).TruncateInt()
-			r.EX = MaxDec(MinDec(r.EX.ToDec(), r.EY.ToDec().Mul(r.SwapPrice).Sub(r.PoolX.ToDec())), sdk.ZeroDec()).TruncateInt()
+			r.EY = MinDec(r.EY.ToDec(), r.EX.Add(r.PoolX).ToDec().Quo(r.SwapPrice)).Ceil().TruncateInt()
+			r.EX = MaxDec(MinDec(r.EX.ToDec(), r.EY.ToDec().Mul(r.SwapPrice).Sub(r.PoolX.ToDec())), sdk.ZeroDec()).Ceil().TruncateInt()
 		}
 		r.MatchType = FractionalMatch
 	}
@@ -574,7 +594,7 @@ func CalculateSwap(direction int, X, Y, orderPrice, lastOrderPrice sdk.Dec, orde
 
 	if r.MatchType == ExactMatch {
 		if !r.EX.Equal(r.TransactAmt) && !r.EY.Equal(r.TransactAmt) {
-			fmt.Println("invariant decimal@@@@", !r.EX.Equal(r.TransactAmt), !r.EY.Equal(r.TransactAmt), r.EX, r.EY, r.TransactAmt, r.TransactAmt)
+			fmt.Println("invariant decimal@@@@", !r.EX.Equal(r.TransactAmt), !r.EY.Equal(r.TransactAmt), r.EX, r.EY, r.TransactAmt)
 		}
 	}
 	if r.EX.Add(r.PoolX).ToDec().Sub(r.EY.Add(r.PoolY).ToDec().Mul(r.SwapPrice)).GT(sdk.OneDec()){
@@ -594,6 +614,12 @@ func CalculateMatch(direction int, X, Y, currentPrice sdk.Dec, orderBook OrderBo
 		} else {
 			orderPrice := order.OrderPrice
 			r := CalculateSwap(direction, X, Y, orderPrice, lastOrderPrice, orderBook)
+			// TODO: need to re-check on v2
+			if (direction == Increase && r.PoolY.ToDec().Sub(r.EX.ToDec().Quo(r.SwapPrice)).GTE(sdk.OneDec())) ||
+				(direction == Decrease && r.PoolX.ToDec().Sub(r.EY.ToDec().Mul(r.SwapPrice)).GTE(sdk.OneDec())) {
+				fmt.Println("!! cant cover case", r)
+				continue
+			}
 			matchScenarioList = append(matchScenarioList, r)
 			lastOrderPrice = orderPrice
 		}
@@ -609,9 +635,14 @@ func CalculateMatch(direction int, X, Y, currentPrice sdk.Dec, orderBook OrderBo
 			maxScenario = s
 		}
 	}
-	//if !maxScenario.EX.Add(maxScenario.PoolX).Equal(maxScenario.EY.Add(maxScenario.PoolY)){
-	//	fmt.Println("!! maxScenario !r.EX.Add(r.PoolX).Equal(r.EY.Add(r.PoolY))", maxScenario, maxScenario.EX.Add(maxScenario.PoolX), maxScenario.EY.Add(maxScenario.PoolY), maxScenario.EX.Add(maxScenario.PoolX).ToDec().Quo(maxScenario.EY.Add(maxScenario.PoolY).ToDec()))
-	//}
+	r := maxScenario
+	// TODO: rounding
+	tmpInvariant := r.EX.Add(r.PoolX).ToDec().Sub(r.EY.Add(r.PoolY).ToDec().Mul(r.SwapPrice))
+	if tmpInvariant.GT(r.SwapPrice) && tmpInvariant.GT(sdk.OneDec()){
+		fmt.Println("!! maxScenario CalculateSwap r.EX.Add(r.PoolX).ToDec().Equal(r.EY.Add(r.PoolY).ToDec().Mul(r.SwapPrice))", r, r.EX.Add(r.PoolX).ToDec(), r.EY.Add(r.PoolY).ToDec().Mul(r.SwapPrice), r.EX.Add(r.PoolX).ToDec().Sub(r.EY.Add(r.PoolY).ToDec().Mul(r.SwapPrice)).Quo(r.SwapPrice), tmpInvariant)
+		panic("maxScenario CalculateSwap")
+		sdk.ZeroDec().Quo(sdk.ZeroDec())  // panic
+	}
 	return maxScenario
 }
 
