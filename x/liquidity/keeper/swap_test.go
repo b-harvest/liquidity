@@ -38,7 +38,9 @@ func TestSwapExecution(t *testing.T) {
 	denoms := []string{denomX, denomY}
 
 	// get random X, Y amount for create pool
-	X, Y := getRandPoolAmt(r)
+	//X, Y := getRandPoolAmt(r)
+	X := sdk.NewInt(100000000000) // TODO: tmp fix
+	Y := sdk.NewInt(100000000000) // TODO: tmp fix
 	deposit := sdk.NewCoins(sdk.NewCoin(denomX, X), sdk.NewCoin(denomY, Y))
 	fmt.Println("-------------------------------------------------------")
 	fmt.Println("X/Y", X.ToDec().Quo(Y.ToDec()), "X", X, "Y", Y)
@@ -130,6 +132,7 @@ func GetRandomOrders(denomX, denomY string, X, Y sdk.Int, r *rand.Rand) (XtoY, Y
 	for i := 0; i < XtoYnewSize; i++ {
 		randFloats(0.1, 0.9)
 		orderPrice := currentPrice.Mul(sdk.NewDecFromIntWithPrec(randRange(r, 991, 1009), 3))
+		fmt.Println(orderPrice, currentPrice, orderPrice.Equal(currentPrice), orderPrice.GTE(currentPrice), orderPrice.GT(currentPrice), orderPrice.LT(currentPrice), orderPrice.LTE(currentPrice), orderPrice.Sub(currentPrice).IsZero())
 		orderAmt := X.ToDec().Mul(sdk.NewDecFromIntWithPrec(randRange(r, 1, 100), 4))
 		orderCoin := sdk.NewCoin(denomX, orderAmt.RoundInt())
 

@@ -69,8 +69,8 @@ func DefaultParams() Params {
 		LiquidityPoolTypes:       defaultLiquidityPoolTypes,
 		MinInitDepositToPool:     sdk.NewInt(1000000),
 		InitPoolCoinMintAmount:   sdk.NewInt(1000000),
-		SwapFeeRate:              sdk.NewDecWithPrec(1, 3), // "0.001000000000000000"
-		LiquidityPoolFeeRate:     sdk.NewDecWithPrec(1, 3), // "0.001000000000000000"
+		SwapFeeRate:              sdk.NewDecWithPrec(3, 3), // "0.001000000000000000"
+		LiquidityPoolFeeRate:     sdk.NewDecWithPrec(3, 3), // "0.001000000000000000"
 		LiquidityPoolCreationFee: sdk.NewCoins(sdk.NewCoin("uatom", sdk.NewInt(100000000))),
 		UnitBatchSize:            1,
 	}
