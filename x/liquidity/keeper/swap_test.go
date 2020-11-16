@@ -13,13 +13,13 @@ import (
 
 func getRandPoolAmt(r *rand.Rand) (X, Y sdk.Int) {
 	// TODO: need to set range for avoid min deposit amt errors
-	X = sdk.NewInt(int64(r.Float32() * 100000000000))
-	Y = sdk.NewInt(int64(r.Float32() * 100000000000))
+	X = sdk.NewInt(int64(r.Float32() * 1000000000000))
+	Y = sdk.NewInt(int64(r.Float32() * 1000000000000))
 	return
 }
 
 func TestSimulationSwapExecution(t *testing.T) {
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 50000; i++ {
 		TestSwapExecution(t)
 	}
 }
