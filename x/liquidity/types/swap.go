@@ -73,13 +73,17 @@ func MaxDec(a, b sdk.Dec) sdk.Dec {
 	}
 }
 
-type OrderMap map[sdk.Dec]OrderByPrice
+type OrderMap map[string]OrderByPrice
 
+func NewDecFromStr(k string) sdk.Dec{
+	res, _ := sdk.NewDecFromStr(k)
+	return res
+}
 // make orderbook by sort orderMap, increased
 func (orderMap OrderMap) SortOrderBook() (orderBook OrderBook) {
 	orderPriceList := make([]sdk.Dec, 0, len(orderMap))
-	for k := range orderMap {
-		orderPriceList = append(orderPriceList, k)
+	for _, v := range orderMap {
+		orderPriceList = append(orderPriceList, v.OrderPrice)
 	}
 
 	sort.Slice(orderPriceList, func(i, j int) bool {
@@ -89,10 +93,11 @@ func (orderMap OrderMap) SortOrderBook() (orderBook OrderBook) {
 	for _, k := range orderPriceList {
 		orderBook = append(orderBook, OrderByPrice{
 			OrderPrice:   k,
-			BuyOrderAmt:  orderMap[k].BuyOrderAmt,
-			SellOrderAmt: orderMap[k].SellOrderAmt,
+			BuyOrderAmt:  orderMap[k.String()].BuyOrderAmt,
+			SellOrderAmt: orderMap[k.String()].SellOrderAmt,
 		})
 	}
+	fmt.Println("@@@@@@ sort ", len(orderMap), len(orderBook))
 	return orderBook
 }
 
@@ -227,6 +232,108 @@ func CalculateMatchStay(currentPrice sdk.Dec, orderBook OrderBook) (r BatchResul
 	return
 }
 
+func UpdateState(X, Y sdk.Dec, XtoY, YtoX []BatchPoolSwapMsg, matchResultXtoY, matchResultYtoX []MatchResult) ([]BatchPoolSwapMsg, []BatchPoolSwapMsg, sdk.Dec, sdk.Dec, sdk.Int, sdk.Int){
+	sort.SliceStable(XtoY, func(i, j int) bool {
+		return XtoY[i].Msg.OrderPrice.GT(XtoY[j].Msg.OrderPrice)
+	})
+	sort.SliceStable(YtoX, func(i, j int) bool {
+		return YtoX[i].Msg.OrderPrice.LT(YtoX[j].Msg.OrderPrice)
+	})
+
+	poolXdelta := sdk.ZeroInt()
+	poolYdelta := sdk.ZeroInt()
+	var matchedOrderMsgIndexListXtoY []uint64
+	var matchedOrderMsgIndexListYtoX []uint64
+	matchedIndexMapXtoY := make(map[uint64]sdk.Coin)
+	matchedIndexMapYtoX := make(map[uint64]sdk.Coin)
+	fractionalCntX := 0
+	fractionalCntY := 0
+
+	for _, match := range matchResultXtoY {
+		for _, order := range XtoY {
+			if match.OrderMsgIndex == order.MsgIndex {
+				poolXdelta = poolXdelta.Add(match.MatchedAmt)
+				poolYdelta = poolYdelta.Sub(match.ReceiveAmt)
+				if order.Msg.OfferCoin.Amount.Sub(match.MatchedAmt).LT(sdk.OneInt()) {  // TODO: decimal error
+					// full match
+					matchedOrderMsgIndexListXtoY = append(matchedOrderMsgIndexListXtoY, order.MsgIndex)
+				} else {
+					// fractional match
+					order.Msg.OfferCoin = order.Msg.OfferCoin.Sub(sdk.NewCoin(order.Msg.OfferCoin.Denom, match.MatchedAmt))
+					matchedIndexMapXtoY[order.MsgIndex] = order.Msg.OfferCoin
+					// TODO: order update check
+					fractionalCntX += 1
+				}
+			}
+		}
+	}
+	if len(matchedOrderMsgIndexListXtoY) > 0 {
+		newI := 0
+		for _, order := range XtoY {
+			if val, ok := matchedIndexMapXtoY[order.MsgIndex]; ok {
+				order.Msg.OfferCoin = val
+			}
+			removeFlag := false
+			for _, i := range matchedOrderMsgIndexListXtoY {
+				if i == order.MsgIndex {
+					removeFlag = true
+					break
+				}
+			}
+			if !removeFlag {
+				XtoY[newI] = order
+				newI += 1
+			}
+			removeFlag = false
+
+		}
+		XtoY = XtoY[:newI]
+	}
+	for _, match := range matchResultYtoX {
+		for _, order := range YtoX {
+			if match.OrderMsgIndex == order.MsgIndex {
+				poolXdelta = poolXdelta.Add(match.MatchedAmt)
+				poolYdelta = poolYdelta.Sub(match.ReceiveAmt)
+				if order.Msg.OfferCoin.Amount.Sub(match.MatchedAmt).LT(sdk.OneInt()) {  // TODO: decimal error
+					// full match
+					matchedOrderMsgIndexListYtoX = append(matchedOrderMsgIndexListYtoX, order.MsgIndex)
+				} else {
+					// fractional match
+					order.Msg.OfferCoin = order.Msg.OfferCoin.Sub(sdk.NewCoin(order.Msg.OfferCoin.Denom, match.MatchedAmt))
+					matchedIndexMapYtoX[order.MsgIndex] = order.Msg.OfferCoin
+					// TODO: order update check
+					fractionalCntY += 1
+				}
+			}
+		}
+	}
+	if len(matchedOrderMsgIndexListYtoX) > 0 {
+		newI := 0
+		for _, order := range YtoX {
+			if val, ok := matchedIndexMapYtoX[order.MsgIndex]; ok {
+				order.Msg.OfferCoin = val
+			}
+			removeFlag := false
+			for _, i := range matchedOrderMsgIndexListYtoX {
+				if i == order.MsgIndex {
+					removeFlag = true
+					break
+				}
+			}
+			if !removeFlag {
+				YtoX[newI] = order
+				newI += 1
+			}
+			removeFlag = false
+
+		}
+		YtoX = YtoX[:newI]
+	}
+	X = X.Add(poolXdelta.ToDec())
+	Y = Y.Add(poolYdelta.ToDec())
+	fmt.Println("fractionalCntX, fractionalCntY", fractionalCntX, fractionalCntY)
+	return XtoY, YtoX, X, Y, poolXdelta, poolYdelta
+}
 // TODO: need to debugging
 //
 func FindOrderMatch(direction int, swapList []BatchPoolSwapMsg, executableAmt, swapPrice, swapFeeRate sdk.Dec, height int64) (matchResultList []MatchResult, swapListExecuted []BatchPoolSwapMsg, poolXdelta, poolYdelta sdk.Int) {
@@ -246,9 +353,9 @@ func FindOrderMatch(direction int, swapList []BatchPoolSwapMsg, executableAmt, s
 
 	matchAmt := sdk.ZeroInt()
 	accumMatchAmt := sdk.ZeroInt()
-	var matchedOrderMsgIndexList []uint64
+	//var matchedOrderMsgIndexList []uint64
 	var matchOrderList []BatchPoolSwapMsg
-	matchedIndexMap := make(map[uint64]sdk.Coin)
+	//matchedIndexMap := make(map[uint64]sdk.Coin)
 
 	lenSwapList := len(swapList)
 	for i, order := range swapList {
@@ -304,15 +411,15 @@ func FindOrderMatch(direction int, swapList []BatchPoolSwapMsg, executableAmt, s
 						}
 						matchResult.ResidualAmt = matchResult.OrderAmt.Sub(matchResult.MatchedAmt).Sub(matchResult.RefundAmt)
 
-						if matchOrder.Msg.OfferCoin.Amount.Sub(matchResult.MatchedAmt).LT(sdk.OneInt()) {  // TODO: decimal error
-							// full match
-							matchedOrderMsgIndexList = append(matchedOrderMsgIndexList, matchOrder.MsgIndex)
-						} else {
-							// fractional match
-							matchOrder.Msg.OfferCoin = matchOrder.Msg.OfferCoin.Sub(sdk.NewCoin(matchOrder.Msg.OfferCoin.Denom, matchResult.MatchedAmt))
-							matchedIndexMap[matchOrder.MsgIndex] = matchOrder.Msg.OfferCoin
-						}
-
+						//if matchOrder.Msg.OfferCoin.Amount.Sub(matchResult.MatchedAmt).LT(sdk.OneInt()) {  // TODO: decimal error
+						//	// full match
+						//	matchedOrderMsgIndexList = append(matchedOrderMsgIndexList, matchOrder.MsgIndex)
+						//} else {
+						//	// fractional match
+						//	matchOrder.Msg.OfferCoin = matchOrder.Msg.OfferCoin.Sub(sdk.NewCoin(matchOrder.Msg.OfferCoin.Denom, matchResult.MatchedAmt))
+						//	matchedIndexMap[matchOrder.MsgIndex] = matchOrder.Msg.OfferCoin
+						//}
+						//
 						matchResultList = append(matchResultList, matchResult)
 						if direction == DirectionXtoY {
 							poolXdelta = poolXdelta.Add(matchResult.MatchedAmt)
@@ -334,27 +441,27 @@ func FindOrderMatch(direction int, swapList []BatchPoolSwapMsg, executableAmt, s
 			break
 		}
 	}
-	if len(matchedOrderMsgIndexList) > 0 {
-		newI := 0
-		for _, order := range swapList {
-			if val, ok := matchedIndexMap[order.MsgIndex]; ok {
-				order.Msg.OfferCoin = val
-			}
-			removeFlag := false
-			for _, i := range matchedOrderMsgIndexList {
-				if i == order.MsgIndex {
-					removeFlag = true
-					break
-				}
-			}
-			if !removeFlag {
-				swapList[newI] = order
-				newI += 1
-			}
-
-		}
-		swapListExecuted = swapList[:newI]
-	}
+	//if len(matchedOrderMsgIndexList) > 0 {
+	//	newI := 0
+	//	for _, order := range swapList {
+	//		if val, ok := matchedIndexMap[order.MsgIndex]; ok {
+	//			order.Msg.OfferCoin = val
+	//		}
+	//		removeFlag := false
+	//		for _, i := range matchedOrderMsgIndexList {
+	//			if i == order.MsgIndex {
+	//				removeFlag = true
+	//				break
+	//			}
+	//		}
+	//		if !removeFlag {
+	//			swapList[newI] = order
+	//			newI += 1
+	//		}
+	//
+	//	}
+	//	swapListExecuted = swapList[:newI]
+	//}
 	return
 }
 
@@ -484,23 +591,23 @@ func GetOrderMap(swapMsgs []BatchPoolSwapMsg, denomX, denomY string) (OrderMap, 
 	for _, m := range swapMsgs {
 		if m.Msg.OfferCoin.Denom == denomX { // buying Y from X
 			XtoY = append(XtoY, m)
-			if _, ok := orderMap[m.Msg.OrderPrice]; ok {
-				orderMap[m.Msg.OrderPrice] = OrderByPrice{
+			if _, ok := orderMap[m.Msg.OrderPrice.String()]; ok {
+				orderMap[m.Msg.OrderPrice.String()] = OrderByPrice{
 					m.Msg.OrderPrice,
-					orderMap[m.Msg.OrderPrice].BuyOrderAmt.Add(m.Msg.OfferCoin.Amount),
-					orderMap[m.Msg.OrderPrice].SellOrderAmt}
+					orderMap[m.Msg.OrderPrice.String()].BuyOrderAmt.Add(m.Msg.OfferCoin.Amount),
+					orderMap[m.Msg.OrderPrice.String()].SellOrderAmt}
 			} else {
-				orderMap[m.Msg.OrderPrice] = OrderByPrice{m.Msg.OrderPrice, m.Msg.OfferCoin.Amount, sdk.ZeroInt()}
+				orderMap[m.Msg.OrderPrice.String()] = OrderByPrice{m.Msg.OrderPrice, m.Msg.OfferCoin.Amount, sdk.ZeroInt()}
 			}
 		} else if m.Msg.OfferCoin.Denom == denomY { // selling Y for X
 			YtoX = append(YtoX, m)
-			if _, ok := orderMap[m.Msg.OrderPrice]; ok {
-				orderMap[m.Msg.OrderPrice] = OrderByPrice{
+			if _, ok := orderMap[m.Msg.OrderPrice.String()]; ok {
+				orderMap[m.Msg.OrderPrice.String()] = OrderByPrice{
 					m.Msg.OrderPrice,
-					orderMap[m.Msg.OrderPrice].BuyOrderAmt,
-					orderMap[m.Msg.OrderPrice].SellOrderAmt.Add(m.Msg.OfferCoin.Amount)}
+					orderMap[m.Msg.OrderPrice.String()].BuyOrderAmt,
+					orderMap[m.Msg.OrderPrice.String()].SellOrderAmt.Add(m.Msg.OfferCoin.Amount)}
 			} else {
-				orderMap[m.Msg.OrderPrice] = OrderByPrice{m.Msg.OrderPrice, sdk.ZeroInt(), m.Msg.OfferCoin.Amount}
+				orderMap[m.Msg.OrderPrice.String()] = OrderByPrice{m.Msg.OrderPrice, sdk.ZeroInt(), m.Msg.OfferCoin.Amount}
 			}
 		} else {
 			//return sdk.ErrInvalidDenom
