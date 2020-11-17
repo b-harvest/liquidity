@@ -129,12 +129,38 @@ func (k Keeper) SwapExecution(ctx sdk.Context, liquidityPoolBatch types.Liquidit
 	orderMapExecuted, _, _ := types.GetOrderMap(append(XtoY, YtoX...), denomX, denomY)
 	orderBookExecuted := orderMapExecuted.SortOrderBook()
 	fmt.Println("orderbook after batch")
+
+
+	validitySwapPrice := types.CheckSwapPrice(matchResultXtoY, matchResultYtoX, result.SwapPrice)
+	if !validitySwapPrice {
+		panic("validitySwapPrice")
+	}
+
+	var validityMustExecutable bool
+	if result.SwapPrice.IsZero() {
+		//var tmp sdk.Dec
+		//result.SwapPrice = tmp
+		validityMustExecutable = types.CheckValidityMustExecutable(orderBookExecuted, lastPrice)
+	} else {
+		validityMustExecutable = types.CheckValidityMustExecutable(orderBookExecuted, result.SwapPrice)
+	}
+	if !validityMustExecutable {
+		panic("CheckValidityMustExecutable")
+	}
+
+	errThreshold, _ := sdk.NewDecFromStr("0.001")
+	if lastPrice.Quo(result.SwapPrice).Sub(sdk.OneDec()).Abs().GT(errThreshold) {
+		fmt.Println(lastPrice, lastPrice.Quo(result.SwapPrice.Sub(sdk.OneDec())), lastPrice.Quo(result.SwapPrice.Sub(sdk.OneDec())).Abs())
+		panic("abs(lastPrice/swapPrice-1) > 0.001")
+	}
+
 	orderBookValidity = types.CheckValidityOrderBook(orderBookExecuted, lastPrice)
 	fmt.Println("after orderBookValidity", orderBookValidity)
 	if !orderBookValidity {
 		fmt.Println(orderBookValidity, "ErrOrderBookInvalidity", orderBookExecuted)
 		panic(orderBookValidity)
 	}
+
 
 	// TODO: updateState, KV Set, with escrow, emit event
 	ctx.EventManager().EmitEvent(

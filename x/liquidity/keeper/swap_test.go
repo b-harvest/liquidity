@@ -18,7 +18,8 @@ func getRandPoolAmt(r *rand.Rand) (X, Y sdk.Int) {
 }
 
 func TestSimulationSwapExecution(t *testing.T) {
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 100000; i++ {
+		fmt.Println("-------------------------------------------------------", i)
 		TestSwapExecution(t)
 	}
 }
@@ -39,7 +40,7 @@ func TestSwapExecution(t *testing.T) {
 	// get random X, Y amount for create pool
 	X, Y := getRandPoolAmt(r)
 	deposit := sdk.NewCoins(sdk.NewCoin(denomX, X), sdk.NewCoin(denomY, Y))
-	fmt.Println("-------------------------------------------------------")
+
 	fmt.Println("X/Y", X.ToDec().Quo(Y.ToDec()), "X", X, "Y", Y)
 
 	// set pool creator account, balance for deposit
@@ -123,13 +124,17 @@ func randRange(r *rand.Rand, min, max int) sdk.Int {
 func GetRandomOrders(denomX, denomY string, X, Y sdk.Int, r *rand.Rand) (XtoY, YtoX []*types.MsgSwap) {
 	currentPrice := X.ToDec().Quo(Y.ToDec())
 
-	XtoYnewSize := int(r.Int31n(50)) // 0~19
-	YtoXnewSize := int(r.Int31n(50)) // 0~19
+	XtoYnewSize := int(r.Int31n(100)) // 0~19
+	YtoXnewSize := int(r.Int31n(100)) // 0~19
 
 	for i := 0; i < XtoYnewSize; i++ {
-		randFloats(0.1, 0.9)
 		orderPrice := currentPrice.Mul(sdk.NewDecFromIntWithPrec(randRange(r, 991, 1009), 3))
-		orderAmt := X.ToDec().Mul(sdk.NewDecFromIntWithPrec(randRange(r, 1, 100), 4))
+		orderAmt := sdk.ZeroDec()
+		if r.Intn(2) == 1 {
+			orderAmt = X.ToDec().Mul(sdk.NewDecFromIntWithPrec(randRange(r, 1, 100), 4))
+		} else {
+			orderAmt = sdk.NewDecFromIntWithPrec(randRange(r, 0, 5), 0)
+		}
 		orderCoin := sdk.NewCoin(denomX, orderAmt.RoundInt())
 
 		XtoY = append(XtoY, &types.MsgSwap{
@@ -141,7 +146,12 @@ func GetRandomOrders(denomX, denomY string, X, Y sdk.Int, r *rand.Rand) (XtoY, Y
 
 	for i := 0; i < YtoXnewSize; i++ {
 		orderPrice := currentPrice.Mul(sdk.NewDecFromIntWithPrec(randRange(r, 991, 1009), 3))
-		orderAmt := Y.ToDec().Mul(sdk.NewDecFromIntWithPrec(randRange(r, 1, 100), 4))
+		orderAmt := sdk.ZeroDec()
+		if r.Intn(2) == 1 {
+			orderAmt = X.ToDec().Mul(sdk.NewDecFromIntWithPrec(randRange(r, 1, 100), 4))
+		} else {
+			orderAmt = sdk.NewDecFromIntWithPrec(randRange(r, 0, 5), 0)
+		}
 		orderCoin := sdk.NewCoin(denomY, orderAmt.RoundInt())
 
 		YtoX = append(YtoX, &types.MsgSwap{

@@ -124,7 +124,7 @@ type BatchResult struct {
 
 func NewBatchResult() BatchResult {
 	return BatchResult{
-		SwapPrice:   sdk.ZeroDec(),
+		//SwapPrice:   sdk.ZeroDec(),
 		EX:          sdk.ZeroInt(),
 		EY:          sdk.ZeroInt(),
 		OriginalEX:  sdk.ZeroInt(),
@@ -165,11 +165,49 @@ func ComputePriceDirection(X, Y, currentPrice sdk.Dec, orderBook OrderBook) (res
 	}
 }
 
+//func CheckValidityMustExecutable(orderBook OrderBook, swapPrice sdk.Dec) bool {
+//	MEX, MEY := GetMustExecutableAmt(swapPrice, orderBook)
+//	EX, EY := GetExecutableAmt(swapPrice, orderBook)
+//	if MEX.Sub(EX).GT(sdk.NewInt(100)) || EY.Sub(MEY).GT(sdk.NewInt(100)) {
+//		fmt.Println("CheckValidityMustExecutable False", MEX, MEY, MEX.Sub(EX), EY.Sub(MEY), swapPrice)
+//		return false
+//	} else {
+//		return true
+//	}
+//}
+
+func CheckSwapPrice(matchResultXtoY, matchResultYtoX []MatchResult, swapPrice sdk.Dec) bool {
+	for _, m := range matchResultXtoY {
+		if m.MatchedAmt.ToDec().Quo(swapPrice).Sub(m.ReceiveAmt.ToDec()).Abs().GT(sdk.OneDec()) {
+			fmt.Println(swapPrice, m, matchResultXtoY)
+			return false
+		}
+	}
+	for _, m := range matchResultYtoX {
+		if m.MatchedAmt.ToDec().Mul(swapPrice).Sub(m.ReceiveAmt.ToDec()).Abs().GT(sdk.OneDec()) {
+			fmt.Println(swapPrice, m, matchResultYtoX)
+			return false
+		}
+	}
+	return true
+}
+
+func CheckValidityMustExecutable(orderBook OrderBook, swapPrice sdk.Dec) bool {
+	MEX, MEY := GetMustExecutableAmt(swapPrice, orderBook)
+	if MEX.GT(sdk.NewInt(1000)) || MEY.GT(sdk.NewInt(1000)) {
+		fmt.Println("CheckValidityMustExecutable False", MEX, MEY, swapPrice)
+		return false
+	} else {
+		return true
+	}
+}
+
 // check orderbook validity
 func CheckValidityOrderBook(orderBook OrderBook, currentPrice sdk.Dec) bool {
 	orderBook.Reverse()
 	maxBuyOrderPrice := sdk.ZeroDec()
-	minSellOrderPrice := sdk.NewDec(1000000000000) // TODO: fix naive logic
+	tmpMin := sdk.NewDec(1000000000000)
+	minSellOrderPrice := tmpMin // TODO: fix naive logic
 	for _, order := range orderBook {
 		if order.BuyOrderAmt.IsPositive() && order.OrderPrice.GT(maxBuyOrderPrice) {
 			maxBuyOrderPrice = order.OrderPrice
@@ -188,6 +226,9 @@ func CheckValidityOrderBook(orderBook OrderBook, currentPrice sdk.Dec) bool {
 		minSellOrderPrice.Quo(currentPrice).LT(oneUnderWithErr) {
 		fmt.Println(maxBuyOrderPrice.GT(minSellOrderPrice), maxBuyOrderPrice.Quo(currentPrice).GT(oneOverWithErr),
 			minSellOrderPrice.Quo(currentPrice).LT(oneUnderWithErr))
+		fmt.Println( !maxBuyOrderPrice.IsZero() && maxBuyOrderPrice.GT(minSellOrderPrice),
+			!maxBuyOrderPrice.IsZero() && maxBuyOrderPrice.Quo(currentPrice).GT(oneOverWithErr),
+			!minSellOrderPrice.Equal(tmpMin) && minSellOrderPrice.Quo(currentPrice).LT(oneUnderWithErr))
 		fmt.Println(maxBuyOrderPrice, minSellOrderPrice, currentPrice)
 		fmt.Println(maxBuyOrderPrice.Quo(currentPrice), minSellOrderPrice.Quo(currentPrice))
 		return false
@@ -490,6 +531,11 @@ func CalculateSwap(direction int, X, Y, orderPrice, lastOrderPrice sdk.Dec, orde
 
 	//r.SwapPrice = X.Add(r.EX).Quo(Y.Add(r.EY)) // legacy constant product model
 	r.SwapPrice = X.Add(r.EX.MulRaw(2).ToDec()).Quo(Y.Add(r.EY.MulRaw(2).ToDec())) // newSwapPriceModel
+	// TODO: need to check
+	//if r.SwapPrice.IsZero() {
+	//	r.MatchType = NoMatch
+	//	return
+	//}
 
 	if direction == Increase {
 		//r.PoolY = Y.Sub(X.Quo(r.SwapPrice))  // legacy constant product model
@@ -576,11 +622,15 @@ func CalculateMatch(direction int, X, Y, currentPrice sdk.Dec, orderBook OrderBo
 	maxScenario = NewBatchResult()
 	maxScenario.TransactAmt = sdk.ZeroInt()
 	for _, s := range matchScenarioList {
-		if s.MatchType == ExactMatch && s.TransactAmt.IsPositive() {
-			maxScenario = s
-			break
-		} else if s.TransactAmt.GT(maxScenario.TransactAmt) {
-			maxScenario = s
+		MEX, MEY := GetMustExecutableAmt(s.SwapPrice, orderBook)
+		fmt.Println("Scenario, MEX, MEY", s, MEX, MEY)
+		if s.EX.GTE(MEX) && s.EY.GTE(MEY) {
+			if s.MatchType == ExactMatch && s.TransactAmt.IsPositive() {
+				maxScenario = s
+				break
+			} else if s.TransactAmt.GT(maxScenario.TransactAmt) {
+				maxScenario = s
+			}
 		}
 	}
 	r := maxScenario
@@ -668,6 +718,20 @@ func GetExecutableAmt(swapPrice sdk.Dec, orderBook OrderBook) (executableBuyAmtX
 		}
 		if order.OrderPrice.LTE(swapPrice) {
 			executableSellAmtY = executableSellAmtY.Add(order.SellOrderAmt)
+		}
+	}
+	return
+}
+
+func GetMustExecutableAmt(swapPrice sdk.Dec, orderBook OrderBook) (mustExecutableBuyAmtX, mustExecutableSellAmtY sdk.Int) {
+	mustExecutableBuyAmtX = sdk.ZeroInt()
+	mustExecutableSellAmtY = sdk.ZeroInt()
+	for _, order := range orderBook {
+		if order.OrderPrice.GT(swapPrice) {
+			mustExecutableBuyAmtX = mustExecutableBuyAmtX.Add(order.BuyOrderAmt)
+		}
+		if order.OrderPrice.LT(swapPrice) {
+			mustExecutableSellAmtY = mustExecutableSellAmtY.Add(order.SellOrderAmt)
 		}
 	}
 	return
