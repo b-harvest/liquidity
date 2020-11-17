@@ -46,7 +46,6 @@ func handleMsgCreateLiquidityPool(ctx sdk.Context, k keeper.Keeper, msg *types.M
 			sdk.NewAttribute(types.AttributeValueReserveAccount, ""),
 			sdk.NewAttribute(types.AttributeValuePoolCoinDenom, ""),
 			sdk.NewAttribute(types.AttributeValueSwapFeeRate, ""),
-			sdk.NewAttribute(types.AttributeValueLiquidityPoolFeeRate, ""),
 			sdk.NewAttribute(types.AttributeValueBatchSize, ""),
 		),
 	)

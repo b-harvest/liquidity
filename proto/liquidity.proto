@@ -39,17 +39,11 @@ message Params {
         (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
         (gogoproto.nullable)   = false
     ];
-    bytes LiquidityPoolFeeRate = 5 [
-        (gogoproto.moretags)   = "yaml:\"liquidity_pool_fee_rate\"",
-        (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
-        (gogoproto.nullable)   = false
-    ];
-    repeated cosmos.base.v1beta1.Coin LiquidityPoolCreationFee = 6 [
+    repeated cosmos.base.v1beta1.Coin LiquidityPoolCreationFee = 5 [
         (gogoproto.moretags)   = "yaml:\"liquidity_pool_creation_fee\"",
         (gogoproto.nullable)   = false
     ];
-
-    uint32 UnitBatchSize = 7 [(gogoproto.moretags) = "yaml:\"unit_batch_size\""];
+    uint32 UnitBatchSize = 6 [(gogoproto.moretags) = "yaml:\"unit_batch_size\""];
 }
 
 message LiquidityPool {

@@ -13,7 +13,6 @@ const (
 
 	AttributeValueLiquidityPoolId        = "liquidity_pool_id"
 	AttributeValueLiquidityPoolTypeIndex = "liquidity_pool_type_index"
-	AttributeValueLiquidityPoolFeeRate   = "liquidity_pool_fee_rate"
 	//AttributeValueSwapPriceFunction      = "swap_price_function"
 	AttributeValueReserveCoinDenoms = "reserve_coin_denoms"
 	AttributeValueReserveAccount    = "reserve_account"
@@ -37,7 +36,6 @@ const (
 	AttributeValueReceivedDemandCoin   = "received_demand_coin"
 	AttributeValueSwapPrice            = "swap_price"
 	AttributeValuePaidSwapFee          = "paid_swap_fee"
-	AttributeValuePaidLiquidityPoolFee = "paid_liquidity_pool_fee"
 
 	AttributeValueCategory = ModuleName
 )
