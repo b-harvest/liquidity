@@ -57,7 +57,6 @@ func GetRandomOrders(denomX, denomY string, X, Y sdk.Int, r *rand.Rand) (XtoY, Y
 	return
 }
 
-
 func TestGetOrderMap(t *testing.T) {
 	//var msgs []BatchPoolSwapMsg
 	X := sdk.NewInt(100000000)
@@ -76,32 +75,32 @@ func TestOrderBookSort(t *testing.T) {
 	b, _ := sdk.NewDecFromStr("0.2")
 	c, _ := sdk.NewDecFromStr("0.3")
 	orderMap[a.String()] = OrderByPrice{
-		OrderPrice: a,
-		BuyOrderAmt: sdk.ZeroInt(),
+		OrderPrice:   a,
+		BuyOrderAmt:  sdk.ZeroInt(),
 		SellOrderAmt: sdk.ZeroInt(),
 	}
 	orderMap[b.String()] = OrderByPrice{
-		OrderPrice: b,
-		BuyOrderAmt: sdk.ZeroInt(),
+		OrderPrice:   b,
+		BuyOrderAmt:  sdk.ZeroInt(),
 		SellOrderAmt: sdk.ZeroInt(),
 	}
 	orderMap[c.String()] = OrderByPrice{
-		OrderPrice: c,
-		BuyOrderAmt: sdk.ZeroInt(),
+		OrderPrice:   c,
+		BuyOrderAmt:  sdk.ZeroInt(),
 		SellOrderAmt: sdk.ZeroInt(),
 	}
 	// make orderbook to sort orderMap
 	orderBook := orderMap.SortOrderBook()
 	fmt.Println(orderBook)
 
-	res := orderBook.Less(0,1)
+	res := orderBook.Less(0, 1)
 	require.True(t, res)
-	res = orderBook.Less(1,2)
+	res = orderBook.Less(1, 2)
 	require.True(t, res)
-	res = orderBook.Less(2,1)
+	res = orderBook.Less(2, 1)
 	require.False(t, res)
 
-	orderBook.Swap(1,2)
+	orderBook.Swap(1, 2)
 	fmt.Println(orderBook)
 	require.Equal(t, c, orderBook[1].OrderPrice)
 	require.Equal(t, b, orderBook[2].OrderPrice)
@@ -161,7 +160,6 @@ func TestGetExecutableAmt(t *testing.T) {
 	require.Equal(t, sdk.NewInt(30000000), executableSellAmtY)
 }
 
-
 // TODO: WIP
 func TestGetPriceDirection(t *testing.T) {
 
@@ -206,7 +204,6 @@ func TestGetPriceDirection(t *testing.T) {
 	// TODO: stay case
 }
 
-
 // TODO: WIP
 func TestComputePriceDirection(t *testing.T) {
 
@@ -240,7 +237,6 @@ func TestComputePriceDirection(t *testing.T) {
 
 	fmt.Println(X, Y, currentYPriceOverX)
 	fmt.Println(result)
-
 
 	// increase case
 	orderMap[c.String()] = OrderByPrice{

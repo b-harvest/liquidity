@@ -12,20 +12,19 @@ import (
 )
 
 func getRandPoolAmt(r *rand.Rand) (X, Y sdk.Int) {
-	// TODO: need to set range for avoid min deposit amt errors
 	X = sdk.NewInt(int64(r.Float32() * 1000000000000))
 	Y = sdk.NewInt(int64(r.Float32() * 1000000000000))
 	return
 }
 
 func TestSimulationSwapExecution(t *testing.T) {
-	for i := 0; i < 50000; i++ {
+	for i := 0; i < 100; i++ {
 		TestSwapExecution(t)
 	}
 }
 
 func TestSwapExecution(t *testing.T) {
-	// set simapp, random
+	// TODO: to simulation, ransim
 	s := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(s)
 	simapp, ctx := createTestInput()
@@ -39,8 +38,6 @@ func TestSwapExecution(t *testing.T) {
 
 	// get random X, Y amount for create pool
 	X, Y := getRandPoolAmt(r)
-	//X := sdk.NewInt(100000000000) // TODO: tmp fix
-	//Y := sdk.NewInt(100000000000) // TODO: tmp fix
 	deposit := sdk.NewCoins(sdk.NewCoin(denomX, X), sdk.NewCoin(denomY, Y))
 	fmt.Println("-------------------------------------------------------")
 	fmt.Println("X/Y", X.ToDec().Quo(Y.ToDec()), "X", X, "Y", Y)
@@ -126,13 +123,12 @@ func randRange(r *rand.Rand, min, max int) sdk.Int {
 func GetRandomOrders(denomX, denomY string, X, Y sdk.Int, r *rand.Rand) (XtoY, YtoX []*types.MsgSwap) {
 	currentPrice := X.ToDec().Quo(Y.ToDec())
 
-	XtoYnewSize := int(r.Int31n(20)) // 0~19
-	YtoXnewSize := int(r.Int31n(20)) // 0~19
+	XtoYnewSize := int(r.Int31n(50)) // 0~19
+	YtoXnewSize := int(r.Int31n(50)) // 0~19
 
 	for i := 0; i < XtoYnewSize; i++ {
 		randFloats(0.1, 0.9)
 		orderPrice := currentPrice.Mul(sdk.NewDecFromIntWithPrec(randRange(r, 991, 1009), 3))
-		fmt.Println(orderPrice, currentPrice, orderPrice.Equal(currentPrice), orderPrice.GTE(currentPrice), orderPrice.GT(currentPrice), orderPrice.LT(currentPrice), orderPrice.LTE(currentPrice), orderPrice.Sub(currentPrice).IsZero())
 		orderAmt := X.ToDec().Mul(sdk.NewDecFromIntWithPrec(randRange(r, 1, 100), 4))
 		orderCoin := sdk.NewCoin(denomX, orderAmt.RoundInt())
 

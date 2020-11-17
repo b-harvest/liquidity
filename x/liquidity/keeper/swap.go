@@ -47,23 +47,26 @@ func (k Keeper) SwapExecution(ctx sdk.Context, liquidityPoolBatch types.Liquidit
 	poolYdelta := sdk.ZeroInt()
 	if result.MatchType != types.NoMatch {
 		var poolXDeltaXtoY, poolXDeltaYtoX, poolYDeltaYtoX, poolYDeltaXtoY sdk.Int
-		matchResultXtoY, _, poolXDeltaXtoY, poolYDeltaXtoY = types.FindOrderMatch(types.DirectionXtoY, XtoY, result.EX, result.SwapPrice, params.SwapFeeRate, ctx.BlockHeight())
-		matchResultYtoX, _, poolXDeltaYtoX, poolYDeltaYtoX = types.FindOrderMatch(types.DirectionYtoX, YtoX, result.EY, result.SwapPrice, params.SwapFeeRate, ctx.BlockHeight())
+		matchResultXtoY, _, poolXDeltaXtoY, poolYDeltaXtoY = types.FindOrderMatch(types.DirectionXtoY, XtoY, result.EX,
+			result.SwapPrice, params.SwapFeeRate, ctx.BlockHeight())
+		matchResultYtoX, _, poolXDeltaYtoX, poolYDeltaYtoX = types.FindOrderMatch(types.DirectionYtoX, YtoX, result.EY,
+			result.SwapPrice, params.SwapFeeRate, ctx.BlockHeight())
 		poolXdelta = poolXDeltaXtoY.Add(poolXDeltaYtoX)
 		poolYdelta = poolYDeltaXtoY.Add(poolYDeltaYtoX)
 	}
 
-	XtoY, YtoX, X, Y, poolXdelta2, poolYdelta2, fractionalCntX, fractionalCntY, decimalErrorX, decimalErrorY := types.UpdateState(X, Y, XtoY, YtoX, matchResultXtoY, matchResultYtoX)
+	XtoY, YtoX, X, Y, poolXdelta2, poolYdelta2, fractionalCntX, fractionalCntY, decimalErrorX, decimalErrorY :=
+		types.UpdateState(X, Y, XtoY, YtoX, matchResultXtoY, matchResultYtoX)
 
 	lastPrice := X.Quo(Y)
 	fmt.Println("lastPrice ", lastPrice)
 
 	fmt.Println("result.SwapPrice, X, Y, currentYPriceOverX", result.SwapPrice, X, Y, currentYPriceOverX)
-	if beforeXtoYLen-len(matchResultXtoY)+fractionalCntX != len(XtoY){
+	if beforeXtoYLen-len(matchResultXtoY)+fractionalCntX != len(XtoY) {
 		fmt.Println("!! match invariant Fail X")
 		panic(beforeXtoYLen)
 	}
-	if beforeYtoXLen-len(matchResultYtoX)+fractionalCntY != len(YtoX){
+	if beforeYtoXLen-len(matchResultYtoX)+fractionalCntY != len(YtoX) {
 		fmt.Println("!! match invariant Fail Y")
 		panic(beforeYtoXLen)
 	}
@@ -92,7 +95,7 @@ func (k Keeper) SwapExecution(ctx sdk.Context, liquidityPoolBatch types.Liquidit
 	invariantCheckX = invariantCheckX.Add(totalAmtX)
 	invariantCheckY = invariantCheckY.Add(totalAmtY)
 
-	invariantCheckX = invariantCheckX.Add(poolXdelta)  // TODO: compare with pooldelta2
+	invariantCheckX = invariantCheckX.Add(poolXdelta)
 	invariantCheckY = invariantCheckY.Add(poolYdelta)
 
 	// print the invariant check and validity with swap, match result
@@ -121,7 +124,6 @@ func (k Keeper) SwapExecution(ctx sdk.Context, liquidityPoolBatch types.Liquidit
 		panic(poolXdelta)
 	}
 
-	// TODO: updateState, cancelEndOfLifeSpanOrders
 	XtoY, YtoX = types.ClearOrders(XtoY, YtoX)
 
 	orderMapExecuted, _, _ := types.GetOrderMap(append(XtoY, YtoX...), denomX, denomY)
@@ -142,4 +144,3 @@ func (k Keeper) SwapExecution(ctx sdk.Context, liquidityPoolBatch types.Liquidit
 	)
 	return nil
 }
-
