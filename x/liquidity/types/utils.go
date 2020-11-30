@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/tendermint/tendermint/crypto"
 )
@@ -35,4 +36,15 @@ func StringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+func EqualApprox(a , b sdk.Dec) bool {
+	fmt.Println(a.Quo(b))
+	fmt.Println(a.Quo(b).Sub(sdk.OneDec()))
+	fmt.Println(a.Quo(b).Sub(sdk.OneDec()).Abs())
+	if a.Quo(b).Sub(sdk.OneDec()).Abs().LT(sdk.NewDecWithPrec(1, 10)){
+		return true
+	} else {
+		return false
+	}
 }

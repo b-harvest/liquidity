@@ -545,6 +545,21 @@ paths:
                   method
 
                   signatures required by gogoproto.
+              offer_coin_fee:
+                type: object
+                properties:
+                  denom:
+                    type: string
+                  amount:
+                    type: string
+                description: >-
+                  Coin defines a coin with a denomination and an amount.
+
+
+                  NOTE: The amount field is an Int which implements the custom
+                  method
+
+                  signatures required by gogoproto.
               demandCoinDenom:
                 type: string
               order_price:
@@ -611,6 +626,21 @@ paths:
                         custom method
 
                         signatures required by gogoproto.
+                    OfferCoinFeeReserve:
+                      type: object
+                      properties:
+                        denom:
+                          type: string
+                        amount:
+                          type: string
+                      description: >-
+                        Coin defines a coin with a denomination and an amount.
+
+
+                        NOTE: The amount field is an Int which implements the
+                        custom method
+
+                        signatures required by gogoproto.
                     Msg:
                       type: object
                       properties:
@@ -626,6 +656,22 @@ paths:
                           type: integer
                           format: int64
                         offer_coin:
+                          type: object
+                          properties:
+                            denom:
+                              type: string
+                            amount:
+                              type: string
+                          description: >-
+                            Coin defines a coin with a denomination and an
+                            amount.
+
+
+                            NOTE: The amount field is an Int which implements
+                            the custom method
+
+                            signatures required by gogoproto.
+                        offer_coin_fee:
                           type: object
                           properties:
                             denom:
@@ -1338,6 +1384,18 @@ definitions:
 
           NOTE: The amount field is an Int which implements the custom method
           signatures required by gogoproto.
+      offer_coin_fee:
+        type: object
+        properties:
+          denom:
+            type: string
+          amount:
+            type: string
+        description: |-
+          Coin defines a coin with a denomination and an amount.
+
+          NOTE: The amount field is an Int which implements the custom method
+          signatures required by gogoproto.
       demandCoinDenom:
         type: string
       order_price:
@@ -1517,6 +1575,18 @@ definitions:
 
           NOTE: The amount field is an Int which implements the custom method
           signatures required by gogoproto.
+      OfferCoinFeeReserve:
+        type: object
+        properties:
+          denom:
+            type: string
+          amount:
+            type: string
+        description: |-
+          Coin defines a coin with a denomination and an amount.
+
+          NOTE: The amount field is an Int which implements the custom method
+          signatures required by gogoproto.
       Msg:
         type: object
         properties:
@@ -1532,6 +1602,21 @@ definitions:
             type: integer
             format: int64
           offer_coin:
+            type: object
+            properties:
+              denom:
+                type: string
+              amount:
+                type: string
+            description: >-
+              Coin defines a coin with a denomination and an amount.
+
+
+              NOTE: The amount field is an Int which implements the custom
+              method
+
+              signatures required by gogoproto.
+          offer_coin_fee:
             type: object
             properties:
               denom:
@@ -2110,6 +2195,21 @@ definitions:
                 method
 
                 signatures required by gogoproto.
+            OfferCoinFeeReserve:
+              type: object
+              properties:
+                denom:
+                  type: string
+                amount:
+                  type: string
+              description: >-
+                Coin defines a coin with a denomination and an amount.
+
+
+                NOTE: The amount field is an Int which implements the custom
+                method
+
+                signatures required by gogoproto.
             Msg:
               type: object
               properties:
@@ -2125,6 +2225,21 @@ definitions:
                   type: integer
                   format: int64
                 offer_coin:
+                  type: object
+                  properties:
+                    denom:
+                      type: string
+                    amount:
+                      type: string
+                  description: >-
+                    Coin defines a coin with a denomination and an amount.
+
+
+                    NOTE: The amount field is an Int which implements the custom
+                    method
+
+                    signatures required by gogoproto.
+                offer_coin_fee:
                   type: object
                   properties:
                     denom:

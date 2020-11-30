@@ -97,7 +97,7 @@ func (k Keeper) CreateLiquidityPool(ctx sdk.Context, msg *types.MsgCreateLiquidi
 	var outputs []banktypes.Output
 
 	// TODO: write test case
-	poolCreationFeePoolAcc := types.GetPoolCreationFeePoolAcc()
+	poolCreationFeePoolAcc := types.GetFeePoolAcc()
 	inputs = append(inputs, banktypes.NewInput(poolCreator, params.LiquidityPoolCreationFee))
 	outputs = append(outputs, banktypes.NewOutput(poolCreationFeePoolAcc, params.LiquidityPoolCreationFee))
 
@@ -398,8 +398,8 @@ func (k Keeper) TransactAndRefundSwapLiquidityPool(ctx sdk.Context, batchMsgs []
 			if (*msgAfter.BatchMsg) != (*batchMsg) {
 				panic("broken msg consistency")
 			}
-			if msgAfter.TransactedCoinAmt.Sub(msgAfter.FeeAmt).IsNegative() ||
-				msgAfter.FeeAmt.GT(msgAfter.TransactedCoinAmt) {
+			if msgAfter.TransactedCoinAmt.Sub(msgAfter.OfferCoinFeeAmt).IsNegative() ||
+				msgAfter.OfferCoinFeeAmt.GT(msgAfter.TransactedCoinAmt) {
 				panic("fee over offer")
 			}
 
@@ -413,9 +413,9 @@ func (k Keeper) TransactAndRefundSwapLiquidityPool(ctx sdk.Context, batchMsgs []
 					// fractional matched, to be remaining order, not refund, only transact fractional exchange amt
 					// Add transacted coins to multisend
 					inputs = append(inputs, banktypes.NewInput(batchEscrowAcc,
-						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.TransactedCoinAmt.Sub(msgAfter.FeeAmt)))))
+						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.TransactedCoinAmt.Sub(msgAfter.OfferCoinFeeAmt)))))
 					outputs = append(outputs, banktypes.NewOutput(poolReserveAcc,
-						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.TransactedCoinAmt.Sub(msgAfter.FeeAmt)))))
+						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.TransactedCoinAmt.Sub(msgAfter.OfferCoinFeeAmt)))))
 					inputs = append(inputs, banktypes.NewInput(poolReserveAcc,
 						sdk.NewCoins(sdk.NewCoin(batchMsg.Msg.DemandCoinDenom, msgAfter.ExchangedDemandCoinAmt))))
 					outputs = append(outputs, banktypes.NewOutput(batchMsg.Msg.GetSwapRequester(),
@@ -423,9 +423,9 @@ func (k Keeper) TransactAndRefundSwapLiquidityPool(ctx sdk.Context, batchMsgs []
 
 					// Add swap fee to multisend
 					inputs = append(inputs, banktypes.NewInput(batchEscrowAcc,
-						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.FeeAmt))))
+						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.OfferCoinFeeAmt))))
 					outputs = append(outputs, banktypes.NewOutput(poolReserveAcc,
-						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.FeeAmt))))
+						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.OfferCoinFeeAmt))))
 
 					batchMsg.Succeed = true
 
@@ -434,9 +434,9 @@ func (k Keeper) TransactAndRefundSwapLiquidityPool(ctx sdk.Context, batchMsgs []
 
 					// Add transacted coins to multisend
 					inputs = append(inputs, banktypes.NewInput(batchEscrowAcc,
-						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.TransactedCoinAmt.Sub(msgAfter.FeeAmt)))))
+						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.TransactedCoinAmt.Sub(msgAfter.OfferCoinFeeAmt)))))
 					outputs = append(outputs, banktypes.NewOutput(poolReserveAcc,
-						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.TransactedCoinAmt.Sub(msgAfter.FeeAmt)))))
+						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.TransactedCoinAmt.Sub(msgAfter.OfferCoinFeeAmt)))))
 					inputs = append(inputs, banktypes.NewInput(poolReserveAcc,
 						sdk.NewCoins(sdk.NewCoin(batchMsg.Msg.DemandCoinDenom, msgAfter.ExchangedDemandCoinAmt))))
 					outputs = append(outputs, banktypes.NewOutput(batchMsg.Msg.GetSwapRequester(),
@@ -444,9 +444,9 @@ func (k Keeper) TransactAndRefundSwapLiquidityPool(ctx sdk.Context, batchMsgs []
 
 					// Add swap fee to multisend
 					inputs = append(inputs, banktypes.NewInput(batchEscrowAcc,
-						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.FeeAmt))))
+						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.OfferCoinFeeAmt))))
 					outputs = append(outputs, banktypes.NewOutput(poolReserveAcc,
-						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.FeeAmt))))
+						sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.OfferCoinFeeAmt))))
 
 					// refund remaining coins
 					if input, output, err := k.ReleaseEscrowForMultiSend(batchMsg.Msg.GetSwapRequester(),
@@ -465,9 +465,9 @@ func (k Keeper) TransactAndRefundSwapLiquidityPool(ctx sdk.Context, batchMsgs []
 			} else if batchMsg.RemainingOfferCoin.IsZero() {
 				// full matched case, Add transacted coins to multisend
 				inputs = append(inputs, banktypes.NewInput(batchEscrowAcc,
-					sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.TransactedCoinAmt.Sub(msgAfter.FeeAmt)))))
+					sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.TransactedCoinAmt.Sub(msgAfter.OfferCoinFeeAmt)))))
 				outputs = append(outputs, banktypes.NewOutput(poolReserveAcc,
-					sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.TransactedCoinAmt.Sub(msgAfter.FeeAmt)))))
+					sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.TransactedCoinAmt.Sub(msgAfter.OfferCoinFeeAmt)))))
 				inputs = append(inputs, banktypes.NewInput(poolReserveAcc,
 					sdk.NewCoins(sdk.NewCoin(batchMsg.Msg.DemandCoinDenom, msgAfter.ExchangedDemandCoinAmt))))
 				outputs = append(outputs, banktypes.NewOutput(batchMsg.Msg.GetSwapRequester(),
@@ -475,9 +475,9 @@ func (k Keeper) TransactAndRefundSwapLiquidityPool(ctx sdk.Context, batchMsgs []
 
 				// Add swap fee to multisend
 				inputs = append(inputs, banktypes.NewInput(batchEscrowAcc,
-					sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.FeeAmt))))
+					sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.OfferCoinFeeAmt))))
 				outputs = append(outputs, banktypes.NewOutput(poolReserveAcc,
-					sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.FeeAmt))))
+					sdk.NewCoins(sdk.NewCoin(batchMsg.ExchangedOfferCoin.Denom, msgAfter.OfferCoinFeeAmt))))
 
 				batchMsg.Succeed = true
 				batchMsg.ToDelete = true

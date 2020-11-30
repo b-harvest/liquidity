@@ -167,7 +167,8 @@ type MatchResult struct {
 	OfferCoinAmt           sdk.Int
 	TransactedCoinAmt      sdk.Int
 	ExchangedDemandCoinAmt sdk.Int
-	FeeAmt                 sdk.Int
+	OfferCoinFeeAmt        sdk.Int // OfferCoinFee
+	ExchangedCoinFeeAmt    sdk.Int // ExchangedCoinFee
 	BatchMsg               *BatchPoolSwapMsg
 	// TODO: add swapPrice
 }
@@ -357,16 +358,18 @@ func FindOrderMatch(direction int, swapList []*BatchPoolSwapMsg, executableAmt s
 							panic("not matched msg pointer ")
 						}
 						if direction == DirectionXtoY {
-							// TODO: offer-FeeAmt for exchanged
-							matchResult.FeeAmt = matchResult.TransactedCoinAmt.ToDec().Mul(swapFeeRate).TruncateInt()
-							matchResult.ExchangedDemandCoinAmt = matchResult.TransactedCoinAmt.Sub(matchResult.FeeAmt).ToDec().Quo(swapPrice).TruncateInt()
+							// TODO: offer-OfferCoinFeeAmt for exchanged
+							matchResult.ExchangedDemandCoinAmt = matchResult.TransactedCoinAmt.ToDec().Quo(swapPrice).TruncateInt()
+							//matchResult.OfferCoinFeeAmt = matchResult.TransactedCoinAmt.ToDec().Mul(swapFeeRate).TruncateInt()
+							//matchResult.ExchangedDemandCoinAmt = matchResult.TransactedCoinAmt.Sub(matchResult.OfferCoinFeeAmt).ToDec().Quo(swapPrice).TruncateInt()
+							matchResult.ExchangedCoinFeeAmt = matchResult.ExchangedDemandCoinAmt.ToDec().Mul(swapFeeRate.Quo(HalfRatio)).TruncateInt()
 						} else if direction == DirectionYtoX {
-							// TODO: offer-FeeAmt for exchanged
-							matchResult.FeeAmt = matchResult.TransactedCoinAmt.ToDec().Mul(swapFeeRate).TruncateInt()
-							matchResult.ExchangedDemandCoinAmt = matchResult.TransactedCoinAmt.Sub(matchResult.FeeAmt).ToDec().Mul(swapPrice).TruncateInt()
+							// TODO: offer-OfferCoinFeeAmt for exchanged
+							matchResult.OfferCoinFeeAmt = matchResult.TransactedCoinAmt.ToDec().Mul(swapFeeRate).TruncateInt()
+							matchResult.ExchangedDemandCoinAmt = matchResult.TransactedCoinAmt.Sub(matchResult.OfferCoinFeeAmt).ToDec().Mul(swapPrice).TruncateInt()
 						}
 						if matchResult.TransactedCoinAmt.GT(matchResult.OfferCoinAmt) ||
-							(matchResult.FeeAmt.GT(matchResult.OfferCoinAmt) && matchResult.FeeAmt.GT(sdk.OneInt())) {
+							(matchResult.OfferCoinFeeAmt.GT(matchResult.OfferCoinAmt) && matchResult.OfferCoinFeeAmt.GT(sdk.OneInt())) {
 							panic(matchResult.TransactedCoinAmt)
 						}
 						matchResultList = append(matchResultList, matchResult)
@@ -519,18 +522,18 @@ func CalculateMatch(direction int, X, Y, currentPrice sdk.Dec, orderBook OrderBo
 // TODO: WIP new validity, Fee
 func CheckSwapPrice(matchResultXtoY, matchResultYtoX []MatchResult, swapPrice sdk.Dec) bool {
 	for _, m := range matchResultXtoY {
-		if m.TransactedCoinAmt.Sub(m.FeeAmt).ToDec().Quo(swapPrice).Sub(m.ExchangedDemandCoinAmt.ToDec()).Abs().GT(sdk.OneDec()) {
+		if m.TransactedCoinAmt.Sub(m.OfferCoinFeeAmt).ToDec().Quo(swapPrice).Sub(m.ExchangedDemandCoinAmt.ToDec()).Abs().GT(sdk.OneDec()) {
 			fmt.Println(swapPrice, m)
 			fmt.Println(m.TransactedCoinAmt.ToDec().Quo(swapPrice).Sub(m.ExchangedDemandCoinAmt.ToDec()))
-			fmt.Println(m.TransactedCoinAmt.Sub(m.FeeAmt).ToDec().Quo(swapPrice).Sub(m.ExchangedDemandCoinAmt.ToDec()))
+			fmt.Println(m.TransactedCoinAmt.Sub(m.OfferCoinFeeAmt).ToDec().Quo(swapPrice).Sub(m.ExchangedDemandCoinAmt.ToDec()))
 			return false
 		}
 	}
 	for _, m := range matchResultYtoX {
-		if m.TransactedCoinAmt.Sub(m.FeeAmt).ToDec().Mul(swapPrice).Sub(m.ExchangedDemandCoinAmt.ToDec()).Abs().GT(sdk.OneDec()) {
+		if m.TransactedCoinAmt.Sub(m.OfferCoinFeeAmt).ToDec().Mul(swapPrice).Sub(m.ExchangedDemandCoinAmt.ToDec()).Abs().GT(sdk.OneDec()) {
 			fmt.Println(swapPrice, m)
 			fmt.Println(m.TransactedCoinAmt.ToDec().Mul(swapPrice).Sub(m.ExchangedDemandCoinAmt.ToDec()))
-			fmt.Println(m.TransactedCoinAmt.Sub(m.FeeAmt).ToDec().Mul(swapPrice).Sub(m.ExchangedDemandCoinAmt.ToDec()))
+			fmt.Println(m.TransactedCoinAmt.Sub(m.OfferCoinFeeAmt).ToDec().Mul(swapPrice).Sub(m.ExchangedDemandCoinAmt.ToDec()))
 			return false
 		}
 	}
@@ -578,7 +581,7 @@ func GetOrderMap(swapMsgs []*BatchPoolSwapMsg, denomX, denomY string, onlyNotMat
 			if _, ok := orderMap[m.Msg.OrderPrice.String()]; ok {
 				orderMap[m.Msg.OrderPrice.String()] = OrderByPrice{
 					m.Msg.OrderPrice,
-					orderMap[m.Msg.OrderPrice.String()].BuyOfferAmt.Add(m.Msg.OfferCoin.Amount),
+					orderMap[m.Msg.OrderPrice.String()].BuyOfferAmt.Add(m.Msg.OfferCoin.Amount), // TODO: feeX half
 					orderMap[m.Msg.OrderPrice.String()].SellOfferAmt,
 					append(orderMap[m.Msg.OrderPrice.String()].MsgList, m),
 				}

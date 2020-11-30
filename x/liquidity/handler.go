@@ -88,6 +88,15 @@ func handleMsgWithdrawFromLiquidityPool(ctx sdk.Context, k keeper.Keeper, msg *t
 }
 
 func handleMsgSwap(ctx sdk.Context, k keeper.Keeper, msg *types.MsgSwap) (*sdk.Result, error) {
+	// TODO: OfferCoinFee
+	params := k.GetParams(ctx)
+
+	// calculate reserve amount for OfferCoinFee
+	offerCoinFeeReserve := sdk.NewCoin(msg.OfferCoin.Denom, msg.OfferCoin.Amount.ToDec().Mul(params.SwapFeeRate).TruncateInt())
+	msg.OfferCoinFee = offerCoinFeeReserve
+	// TODO EqualAlmost
+
+
 	_, err := k.SwapLiquidityPoolToBatch(ctx, msg)
 	if err != nil {
 		return &sdk.Result{

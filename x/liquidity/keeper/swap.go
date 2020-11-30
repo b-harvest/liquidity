@@ -241,8 +241,8 @@ func (k Keeper) SwapExecution(ctx sdk.Context, liquidityPoolBatch types.Liquidit
 				} else {
 					break
 				}
-				if !msgAfter.FeeAmt.IsPositive() {
-					panic(msgAfter.FeeAmt)
+				if !msgAfter.OfferCoinFeeAmt.IsPositive() {
+					panic(msgAfter.OfferCoinFeeAmt)
 				}
 			} else {
 				panic("fail msg pointer consistency")

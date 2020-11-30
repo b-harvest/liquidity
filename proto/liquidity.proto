@@ -120,5 +120,9 @@ message BatchPoolSwapMsg {
         (gogoproto.nullable)     = false,
         (gogoproto.moretags)     = "yaml:\"remaining_offer_coin\""
     ];
-    MsgSwap Msg = 9 [(gogoproto.moretags) = "yaml:\"msg\""];
+    cosmos.base.v1beta1.Coin OfferCoinFeeReserve = 9 [
+        (gogoproto.nullable)     = false,
+        (gogoproto.moretags)     = "yaml:\"offer_coin_fee_reserve\""
+    ];
+    MsgSwap Msg = 10 [(gogoproto.moretags) = "yaml:\"msg\""];
 }
