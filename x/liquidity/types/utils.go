@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/tendermint/tendermint/crypto"
 )
@@ -63,3 +64,13 @@ func CoinSafeSubAmount(coinA sdk.Coin, coinBamt sdk.Int) sdk.Coin {
 //	}
 //	return resCoin
 //}
+func EqualApprox(a , b sdk.Dec) bool {
+	fmt.Println(a.Quo(b))
+	fmt.Println(a.Quo(b).Sub(sdk.OneDec()))
+	fmt.Println(a.Quo(b).Sub(sdk.OneDec()).Abs())
+	if a.Quo(b).Sub(sdk.OneDec()).Abs().LT(sdk.NewDecWithPrec(1, 10)){
+		return true
+	} else {
+		return false
+	}
+}
