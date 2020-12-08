@@ -59,13 +59,13 @@ func TestGetAllLiquidityPoolBatchSwapMsgs(t *testing.T) {
 	require.Equal(t, uint64(1), poolBatch.SwapMsgIndex)
 
 	for i, msg := range XtoY {
-		app.SaveAccount(simapp, ctx, buyerAccs[i], sdk.NewCoins(msg.OfferCoin))
+		app.SaveAccountWithFee(simapp, ctx, buyerAccs[i], sdk.NewCoins(msg.OfferCoin), msg.OfferCoin)
 		msg.SwapRequesterAddress = buyerAccs[i].String()
 		msg.PoolId = pool.PoolId
 		msg.PoolTypeIndex = poolTypeIndex
 	}
 	for i, msg := range YtoX {
-		app.SaveAccount(simapp, ctx, sellerAccs[i], sdk.NewCoins(msg.OfferCoin))
+		app.SaveAccountWithFee(simapp, ctx, sellerAccs[i], sdk.NewCoins(msg.OfferCoin), msg.OfferCoin)
 		msg.SwapRequesterAddress = sellerAccs[i].String()
 		msg.PoolId = pool.PoolId
 		msg.PoolTypeIndex = poolTypeIndex

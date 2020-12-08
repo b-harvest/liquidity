@@ -211,8 +211,8 @@ func TestMaxOrderRatio(t *testing.T) {
 	offerCoin := sdk.NewCoin(denomX, sdk.NewInt(1000))
 	offerCoinY := sdk.NewCoin(denomY, sdk.NewInt(1000))
 
-	app.SaveAccount(simapp, ctx, addrs[1], sdk.NewCoins(offerCoin))
-	app.SaveAccount(simapp, ctx, addrs[2], sdk.NewCoins(offerCoinY))
+	app.SaveAccountWithFee(simapp, ctx, addrs[1], sdk.NewCoins(offerCoin), offerCoin)
+	app.SaveAccountWithFee(simapp, ctx, addrs[2], sdk.NewCoins(offerCoinY), offerCoinY)
 
 	msgBuy := types.NewMsgSwap(addrs[1], poolId, DefaultPoolTypeIndex, DefaultSwapType, offerCoin, DenomY, priceBuy)
 	msgSell := types.NewMsgSwap(addrs[2], poolId, DefaultPoolTypeIndex, DefaultSwapType, offerCoinY, DenomY, priceSell)
@@ -227,8 +227,8 @@ func TestMaxOrderRatio(t *testing.T) {
 	offerCoin = sdk.NewCoin(denomX, X)
 	offerCoinY = sdk.NewCoin(denomY, Y)
 
-	app.SaveAccount(simapp, ctx, addrs[1], sdk.NewCoins(offerCoin))
-	app.SaveAccount(simapp, ctx, addrs[2], sdk.NewCoins(offerCoinY))
+	app.SaveAccountWithFee(simapp, ctx, addrs[1], sdk.NewCoins(offerCoin), offerCoin)
+	app.SaveAccountWithFee(simapp, ctx, addrs[2], sdk.NewCoins(offerCoinY), offerCoinY)
 
 	msgBuy = types.NewMsgSwap(addrs[1], poolId, DefaultPoolTypeIndex, DefaultSwapType, offerCoin, DenomY, priceBuy)
 	msgSell = types.NewMsgSwap(addrs[2], poolId, DefaultPoolTypeIndex, DefaultSwapType, offerCoinY, DenomY, priceSell)
@@ -243,8 +243,8 @@ func TestMaxOrderRatio(t *testing.T) {
 	offerCoin = sdk.NewCoin(denomX, X.ToDec().Mul(maxOrderRatio).TruncateInt())
 	offerCoinY = sdk.NewCoin(denomY, Y.ToDec().Mul(maxOrderRatio).TruncateInt())
 
-	app.SaveAccount(simapp, ctx, addrs[1], sdk.NewCoins(offerCoin))
-	app.SaveAccount(simapp, ctx, addrs[2], sdk.NewCoins(offerCoinY))
+	app.SaveAccountWithFee(simapp, ctx, addrs[1], sdk.NewCoins(offerCoin), offerCoin)
+	app.SaveAccountWithFee(simapp, ctx, addrs[2], sdk.NewCoins(offerCoinY), offerCoinY)
 
 	msgBuy = types.NewMsgSwap(addrs[1], poolId, DefaultPoolTypeIndex, DefaultSwapType, offerCoin, DenomY, priceBuy)
 	msgSell = types.NewMsgSwap(addrs[2], poolId, DefaultPoolTypeIndex, DefaultSwapType, offerCoinY, DenomY, priceSell)
@@ -261,8 +261,8 @@ func TestMaxOrderRatio(t *testing.T) {
 
 	offerCoin = sdk.NewCoin(denomX, params.MinInitDepositToPool.Quo(sdk.NewInt(2)))
 	offerCoinY = sdk.NewCoin(denomY, params.MinInitDepositToPool.Quo(sdk.NewInt(10)))
-	app.SaveAccount(simapp, ctx, addrs[1], sdk.NewCoins(offerCoin))
-	app.SaveAccount(simapp, ctx, addrs[2], sdk.NewCoins(offerCoinY))
+	app.SaveAccountWithFee(simapp, ctx, addrs[1], sdk.NewCoins(offerCoin), offerCoin)
+	app.SaveAccountWithFee(simapp, ctx, addrs[2], sdk.NewCoins(offerCoinY), offerCoinY)
 
 	msgBuy = types.NewMsgSwap(addrs[1], poolId, DefaultPoolTypeIndex, DefaultSwapType, offerCoin, DenomY, priceBuy)
 	msgSell = types.NewMsgSwap(addrs[2], poolId, DefaultPoolTypeIndex, DefaultSwapType, offerCoinY, DenomY, priceSell)

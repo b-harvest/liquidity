@@ -232,6 +232,11 @@ func (k Keeper) SwapLiquidityPoolToBatch(ctx sdk.Context, msg *types.MsgSwap, Or
 		return nil, err
 	}
 
+	// TODO: half-half fee
+	if err := k.HoldEscrow(ctx, msg.GetSwapRequester(), sdk.NewCoins(msg.OfferCoinFee)); err != nil {
+		return nil, err
+	}
+
 	poolBatch.SwapMsgIndex += 1
 	k.SetLiquidityPoolBatch(ctx, poolBatch)
 	k.SetLiquidityPoolBatchSwapMsg(ctx, poolBatch.PoolId, batchPoolMsg)

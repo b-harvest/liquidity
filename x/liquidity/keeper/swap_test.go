@@ -14,7 +14,7 @@ import (
 )
 
 func TestSimulationSwapExecution(t *testing.T) {
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 100; i++ {
 		fmt.Println("test count", i+1)
 		TestSwapExecution(t)
 	}
@@ -119,16 +119,18 @@ func TestSwapExecution(t *testing.T) {
 	sellerAccs := app.AddTestAddrsIncremental(simapp, ctx, len(YtoX), sdk.NewInt(0))
 
 	for i, msg := range XtoY {
-		app.SaveAccount(simapp, ctx, buyerAccs[i], sdk.NewCoins(msg.OfferCoin))
+		app.SaveAccountWithFee(simapp, ctx, buyerAccs[i], sdk.NewCoins(msg.OfferCoin), msg.OfferCoin)
 		msg.SwapRequesterAddress = buyerAccs[i].String()
 		msg.PoolId = poolId
 		msg.PoolTypeIndex = poolTypeIndex
+		msg.OfferCoinFee = types.GetOfferCoinFee(msg.OfferCoin)
 	}
 	for i, msg := range YtoX {
-		app.SaveAccount(simapp, ctx, sellerAccs[i], sdk.NewCoins(msg.OfferCoin))
+		app.SaveAccountWithFee(simapp, ctx, sellerAccs[i], sdk.NewCoins(msg.OfferCoin), msg.OfferCoin)
 		msg.SwapRequesterAddress = sellerAccs[i].String()
 		msg.PoolId = poolId
 		msg.PoolTypeIndex = poolTypeIndex
+		msg.OfferCoinFee = types.GetOfferCoinFee(msg.OfferCoin)
 	}
 
 	// begin block, delete and init pool batch
@@ -196,16 +198,18 @@ func testSwapEdgeCases(t *testing.T, simapp *app.LiquidityApp, ctx sdk.Context, 
 		poolTypeIndex := types.DefaultPoolTypeIndex
 
 		for i, msg := range XtoY {
-			app.SaveAccount(simapp, ctx, buyerAccs[i], sdk.NewCoins(msg.OfferCoin))
+			app.SaveAccountWithFee(simapp, ctx, buyerAccs[i], sdk.NewCoins(msg.OfferCoin), msg.OfferCoin)
 			msg.SwapRequesterAddress = buyerAccs[i].String()
 			msg.PoolId = poolId
 			msg.PoolTypeIndex = poolTypeIndex
+			msg.OfferCoinFee = types.GetOfferCoinFee(msg.OfferCoin)
 		}
 		for i, msg := range YtoX {
-			app.SaveAccount(simapp, ctx, sellerAccs[i], sdk.NewCoins(msg.OfferCoin))
+			app.SaveAccountWithFee(simapp, ctx, sellerAccs[i], sdk.NewCoins(msg.OfferCoin), msg.OfferCoin)
 			msg.SwapRequesterAddress = sellerAccs[i].String()
 			msg.PoolId = poolId
 			msg.PoolTypeIndex = poolTypeIndex
+			msg.OfferCoinFee = types.GetOfferCoinFee(msg.OfferCoin)
 		}
 	}
 

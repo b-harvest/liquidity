@@ -64,6 +64,8 @@ func CoinSafeSubAmount(coinA sdk.Coin, coinBamt sdk.Int) sdk.Coin {
 //	}
 //	return resCoin
 //}
+
+// TODO: fix with test
 func EqualApprox(a , b sdk.Dec) bool {
 	fmt.Println(a.Quo(b))
 	fmt.Println(a.Quo(b).Sub(sdk.OneDec()))
