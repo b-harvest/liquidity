@@ -83,7 +83,57 @@ func (k Keeper) SwapExecution(ctx sdk.Context, liquidityPoolBatch types.Liquidit
 	}
 	types.MatchResultDecimalDelta(matchResultXtoY, matchResultXtoYDec)
 	types.MatchResultDecimalDelta(matchResultYtoX, matchResultYtoXDec)
-	types.GetMaximumDeltaCase(append(matchResultXtoY, matchResultYtoX...), append(matchResultXtoYDec, matchResultYtoXDec...), batchResultDelta)
+	matchResults := append(matchResultXtoY, matchResultYtoX...)
+	matchResultsDec := append(matchResultXtoYDec, matchResultYtoXDec...)
+	if len(matchResults)!=len(matchResultsDec) {
+		//fmt.Println(matchResults)
+		//fmt.Println(matchResultsDec)
+		fmt.Println("@@@@@@@@ matchResultUnmatched", len(matchResults), len(matchResultsDec))
+		//fmt.Println(batchResultDelta.SwapPrice, batchResultDelta)
+		//fmt.Println(result)
+		//fmt.Println(resultDec)
+		//panic("matchResult")
+	} else {
+		// TODO: print / 10^6 or google drive
+		// deltaReport
+		deltaResult := types.GetMaximumDeltaCase(matchResults, matchResultsDec, batchResultDelta)
+		//fmt.Println(currentHeight, X, Y, currentYPriceOverX, deltaResult.BatchResultDelta.PoolX, deltaResult.BatchResultDelta.PoolY, deltaResult.BatchResultDelta.EX, deltaResult.BatchResultDelta.EY, deltaResult.BatchResultDelta.TransactAmt,
+		//	deltaResult.MaxDeltaTransactedCoinAmount, deltaResult.IntModelTransactedCoinAmount, deltaResult.DecModelTransactedCoinAmount, deltaResult.MaxDeltaOfferCoinFeeAmount, deltaResult.IntModelOfferCoinFeeAmount, deltaResult.DecModelOfferCoinFeeAmount, deltaResult.MaxDeltaExchangedDemandCoinAmount, deltaResult.IntModelExchangedDemandCoinAmount, deltaResult.DecModelExchangedDemandCoinAmount, deltaResult.MaxDeltaExchangedCoinFeeAmount, deltaResult.IntModelExchangedCoinFeeAmount, deltaResult.DecModelExchangedCoinFeeAmount)
+
+		fmt.Println(currentHeight,
+			X.QuoInt64(1000000),
+			Y.QuoInt64(1000000),
+			currentYPriceOverX,
+			deltaResult.BatchResultDelta.PoolX,
+			result.PoolX.ToDec().QuoInt64(1000000),
+			resultDec.PoolX.QuoInt64(1000000),
+			deltaResult.BatchResultDelta.PoolY,
+			result.PoolY.ToDec().QuoInt64(1000000),
+			resultDec.PoolY.QuoInt64(1000000),
+			deltaResult.BatchResultDelta.EX,
+			result.EX.ToDec().QuoInt64(1000000),
+			resultDec.EX.QuoInt64(1000000),
+			deltaResult.BatchResultDelta.EY,
+			result.EY.ToDec().QuoInt64(1000000),
+			resultDec.EY.QuoInt64(1000000),
+			deltaResult.BatchResultDelta.TransactAmt,
+			result.TransactAmt.ToDec().QuoInt64(1000000),
+			resultDec.TransactAmt.QuoInt64(1000000),
+			deltaResult.MaxDeltaTransactedCoinAmount,
+			deltaResult.IntModelTransactedCoinAmount,
+			deltaResult.DecModelTransactedCoinAmount,
+			deltaResult.MaxDeltaOfferCoinFeeAmount,
+			deltaResult.IntModelOfferCoinFeeAmount,
+			deltaResult.DecModelOfferCoinFeeAmount,
+			deltaResult.MaxDeltaExchangedDemandCoinAmount,
+			deltaResult.IntModelExchangedDemandCoinAmount,
+			deltaResult.DecModelExchangedDemandCoinAmount,
+			deltaResult.MaxDeltaExchangedCoinFeeAmount,
+			deltaResult.IntModelExchangedCoinFeeAmount,
+			deltaResult.DecModelExchangedCoinFeeAmount)
+	}
+
+
 	executedMsgCount := uint64(len(swapMsgs))
 
 	if result.MatchType == 0 {

@@ -14,16 +14,16 @@ import (
 )
 
 func TestSimulationSwapExecution(t *testing.T) {
-	for i := 0; i < 50; i++ {
-		if i%10 == 0 {
-			fmt.Println("TestSimulationSwapExecution count", i)
-		}
-		TestSwapExecution(t)
-	}
-	for i := 0; i < 10; i++ {
-		if i%10 == 0 {
-			fmt.Println("TestSimulationSwapExecutionFindEdgeCase count", i)
-		}
+	//for i := 0; i < 50; i++ {
+	//	//if i%10 == 0 {
+	//	fmt.Println("--------TestSimulationSwapExecution count", i)
+	//	//}
+	//	TestSwapExecution(t)
+	//}
+	for i := 0; i < 5000; i++ {
+		//if i%10 == 0 {
+		//fmt.Println("---------------- TestSimulationSwapExecutionFindEdgeCase count", i)
+		//}
 		TestSimulationSwapExecutionFindEdgeCase(t)
 	}
 }
@@ -61,6 +61,7 @@ func TestSimulationSwapExecutionFindEdgeCase(t *testing.T) {
 
 	for i := 0; i < 20; i++ {
 		ctx = ctx.WithBlockHeight(int64(i))
+		//fmt.Println("-----------", i)
 		testSwapEdgeCases(t, simapp, ctx, X, Y, depositBalance, addrs)
 	}
 }

@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"sort"
 )
@@ -168,16 +167,19 @@ type BatchResultDec struct {
 }
 
 type DeltaResult struct {
-	BatchResultDelta  BatchResultDec
-	MaxDeltaDemandCoinAmount sdk.Dec
-	MaxDeltaOfferCoinAmount sdk.Dec
-	MaxDeltaFeeCoinAmount sdk.Dec
-	IntModelDemandCoinAmount sdk.Int
-	IntModelOfferCoinAmount sdk.Int
-	IntModelFeeCoinAmount sdk.Int
-	DecModelDemandCoinAmount sdk.Dec
-	DecModelOfferCoinAmount sdk.Dec
-	DecModelFeeCoinAmount sdk.Dec
+	BatchResultDelta                  BatchResultDec
+	MaxDeltaExchangedDemandCoinAmount sdk.Dec
+	MaxDeltaTransactedCoinAmount      sdk.Dec
+	MaxDeltaOfferCoinFeeAmount        sdk.Dec
+	MaxDeltaExchangedCoinFeeAmount    sdk.Dec
+	IntModelExchangedDemandCoinAmount sdk.Dec
+	IntModelTransactedCoinAmount      sdk.Dec
+	IntModelOfferCoinFeeAmount        sdk.Dec
+	IntModelExchangedCoinFeeAmount    sdk.Dec
+	DecModelExchangedDemandCoinAmount sdk.Dec
+	DecModelTransactedCoinAmount      sdk.Dec
+	DecModelOfferCoinFeeAmount        sdk.Dec
+	DecModelExchangedCoinFeeAmount    sdk.Dec
 }
 
 // return of zero object, to avoid nil
@@ -240,11 +242,11 @@ var DecimalErrThresholdAmount, _ = sdk.NewDecFromStr("1000.0")
 func BatchResultDecimalDelta(batchResult BatchResult, batchResultDec BatchResultDec) BatchResultDec {
 	delta := NewBatchResultDec()
 	delta.SwapPrice = batchResultDec.SwapPrice.Sub(batchResult.SwapPrice)
-	delta.EX = batchResultDec.EX.Sub(batchResult.EX.ToDec())
-	delta.EY = batchResultDec.EY.Sub(batchResult.EY.ToDec())
-	delta.PoolX = batchResultDec.PoolX.Sub(batchResult.PoolX.ToDec())
-	delta.PoolY = batchResultDec.PoolY.Sub(batchResult.PoolY.ToDec())
-	delta.TransactAmt = batchResultDec.TransactAmt.Sub(batchResult.TransactAmt.ToDec())
+	delta.EX = batchResultDec.EX.QuoInt64(1000000).Sub(batchResult.EX.ToDec().QuoInt64(1000000))
+	delta.EY = batchResultDec.EY.QuoInt64(1000000).Sub(batchResult.EY.ToDec().QuoInt64(1000000))
+	delta.PoolX = batchResultDec.PoolX.QuoInt64(1000000).Sub(batchResult.PoolX.ToDec().QuoInt64(1000000))
+	delta.PoolY = batchResultDec.PoolY.QuoInt64(1000000).Sub(batchResult.PoolY.ToDec().QuoInt64(1000000))
+	delta.TransactAmt = batchResultDec.TransactAmt.QuoInt64(1000000).Sub(batchResult.TransactAmt.ToDec().QuoInt64(1000000))
 	//fmt.Println("BatchResultDecimalDelta", "delta.SwapPrice", "delta.EX", "delta.EY",
 	//	"delta.PoolX", "delta.PoolY", "delta.TransactAmt")
 	//fmt.Println("BatchResultDecimalDelta", delta.SwapPrice, delta.EX, delta.EY,
@@ -256,9 +258,9 @@ func BatchResultDecimalDelta(batchResult BatchResult, batchResultDec BatchResult
 		delta.PoolX.Abs().GT(DecimalErrThresholdAmount) ||
 		delta.PoolY.Abs().GT(DecimalErrThresholdAmount) ||
 		delta.TransactAmt.Abs().GT(DecimalErrThresholdAmount) {
-		fmt.Println("BatchResultDecimalDelta Threshold", delta)
-		fmt.Println(batchResult)
-		fmt.Println(batchResultDec)
+		//fmt.Println("BatchResultDecimalDelta Threshold", delta)
+		//fmt.Println(batchResult)
+		//fmt.Println(batchResultDec)
 	}
 	return delta
 }
@@ -267,9 +269,9 @@ func MatchResultDecimalDelta(matchResults []MatchResult, matchResultDecs []Match
 	//fmt.Println("matchResult", "i", "matchresult.OrderPrice", "delta.OfferCoinAmt", "delta.TransactedCoinAmt", "delta.ExchangedDemandCoinAmt",
 	//	"delta.OfferCoinFeeAmt", "delta.ExchangedCoinFeeAmt", "OfferCoinAmtErrorRatio", "TransactedCoinAmtErrorRatio", "ExchangedDemandCoinAmtErrorRatio")
 	if len(matchResults)!=len(matchResultDecs) {
-		fmt.Println(matchResults)
-		fmt.Println(matchResultDecs)
-		fmt.Println("@@@@@@@@ panic matchResultUnmatched", len(matchResults), len(matchResultDecs))
+		//fmt.Println(matchResults)
+		//fmt.Println(matchResultDecs)
+		//fmt.Println("@@@@@@@@ panic matchResultUnmatched", len(matchResults), len(matchResultDecs))
 		return
 		//panic("matchResult")
 	}
@@ -321,68 +323,72 @@ func MatchResultDecimalDelta(matchResults []MatchResult, matchResultDecs []Match
 	}
 }
 
-func GetMaximumDeltaCase(matchResults []MatchResult, matchResultDecs []MatchResultDec, batchResultDelta BatchResultDec) (deltaResult DeltaResult) {
-	//fmt.Println("MaxDeltaOfferCoinAmount", "MaxDeltaFeeCoinAmount", "IntModelDemandCoinAmount", "IntModelOfferCoinAmount", "IntModelFeeCoinAmount", "DecModelDemandCoinAmount", "DecModelOfferCoinAmount", "DecModelFeeCoinAmount")
+func GetMaximumDeltaCase(matchResults []MatchResult, matchResultsDec []MatchResultDec, batchResultDelta BatchResultDec) (deltaResult DeltaResult) {
+	//fmt.Println("MaxDeltaTransactedCoinAmount", "MaxDeltaOfferCoinFeeAmount", "IntModelExchangedDemandCoinAmount", "IntModelTransactedCoinAmount", "IntModelOfferCoinFeeAmount", "DecModelExchangedDemandCoinAmount", "DecModelTransactedCoinAmount", "DecModelOfferCoinFeeAmount")
 	deltaResult.BatchResultDelta = batchResultDelta
-	deltaResult.MaxDeltaDemandCoinAmount = sdk.ZeroDec()
-	deltaResult.MaxDeltaOfferCoinAmount = sdk.ZeroDec()
-	deltaResult.MaxDeltaFeeCoinAmount = sdk.ZeroDec()
+	deltaResult.MaxDeltaExchangedDemandCoinAmount = sdk.ZeroDec()
+	deltaResult.MaxDeltaTransactedCoinAmount = sdk.ZeroDec()
+	deltaResult.MaxDeltaOfferCoinFeeAmount = sdk.ZeroDec()
+	deltaResult.MaxDeltaExchangedCoinFeeAmount = sdk.ZeroDec()
 
-	deltaResult.IntModelDemandCoinAmount = sdk.ZeroInt()
-	deltaResult.IntModelOfferCoinAmount = sdk.ZeroInt()
-	deltaResult.IntModelFeeCoinAmount = sdk.ZeroInt()
+	deltaResult.IntModelExchangedDemandCoinAmount = sdk.ZeroDec()
+	deltaResult.IntModelTransactedCoinAmount = sdk.ZeroDec()
+	deltaResult.IntModelOfferCoinFeeAmount = sdk.ZeroDec()
+	deltaResult.IntModelExchangedCoinFeeAmount = sdk.ZeroDec()
 
-	deltaResult.DecModelDemandCoinAmount = sdk.ZeroDec()
-	deltaResult.DecModelOfferCoinAmount = sdk.ZeroDec()
-	deltaResult.DecModelFeeCoinAmount = sdk.ZeroDec()
+	deltaResult.DecModelExchangedDemandCoinAmount = sdk.ZeroDec()
+	deltaResult.DecModelTransactedCoinAmount = sdk.ZeroDec()
+	deltaResult.DecModelOfferCoinFeeAmount = sdk.ZeroDec()
+	deltaResult.DecModelExchangedCoinFeeAmount = sdk.ZeroDec()
 
-	if len(matchResults)!=len(matchResultDecs) {
-		fmt.Println(matchResults)
-		fmt.Println(matchResultDecs)
-		fmt.Println("@@@@@@@@ matchResultUnmatched", len(matchResults), len(matchResultDecs))
-		//panic("matchResult")
-		return
-	}
 	for i, matchResult := range matchResults {
 		delta := MatchResultDec{}
-		delta.OfferCoinAmt = matchResultDecs[i].OfferCoinAmt.Sub(matchResult.OfferCoinAmt.ToDec())
-		delta.TransactedCoinAmt = matchResultDecs[i].TransactedCoinAmt.Sub(matchResult.TransactedCoinAmt.ToDec())
-		delta.ExchangedDemandCoinAmt = matchResultDecs[i].ExchangedDemandCoinAmt.Sub(matchResult.ExchangedDemandCoinAmt.ToDec())
-		delta.OfferCoinFeeAmt = matchResultDecs[i].OfferCoinFeeAmt.Sub(matchResult.OfferCoinFeeAmt.ToDec())
-		delta.ExchangedCoinFeeAmt = matchResultDecs[i].ExchangedCoinFeeAmt.Sub(matchResult.ExchangedCoinFeeAmt.ToDec())
+		//delta.OfferCoinAmt = matchResultsDec[i].OfferCoinAmt.Sub(matchResult.OfferCoinAmt.ToDec())
+		delta.TransactedCoinAmt = matchResultsDec[i].TransactedCoinAmt.QuoInt64(1000000).Sub(matchResult.TransactedCoinAmt.ToDec().QuoInt64(1000000))
+		delta.OfferCoinFeeAmt = matchResultsDec[i].OfferCoinFeeAmt.QuoInt64(1000000).Sub(matchResult.OfferCoinFeeAmt.ToDec().QuoInt64(1000000))
+		delta.ExchangedDemandCoinAmt = matchResultsDec[i].ExchangedDemandCoinAmt.QuoInt64(1000000).Sub(matchResult.ExchangedDemandCoinAmt.ToDec().QuoInt64(1000000))
+		delta.ExchangedCoinFeeAmt = matchResultsDec[i].ExchangedCoinFeeAmt.QuoInt64(1000000).Sub(matchResult.ExchangedCoinFeeAmt.ToDec().QuoInt64(1000000))
 
-		if delta.ExchangedDemandCoinAmt.GT(deltaResult.MaxDeltaDemandCoinAmount) {
-			deltaResult.MaxDeltaDemandCoinAmount = delta.ExchangedDemandCoinAmt
-			deltaResult.IntModelDemandCoinAmount = matchResult.ExchangedDemandCoinAmt
+		if delta.ExchangedDemandCoinAmt.GT(deltaResult.MaxDeltaExchangedDemandCoinAmount) {
+			deltaResult.MaxDeltaExchangedDemandCoinAmount = delta.ExchangedDemandCoinAmt
+			deltaResult.IntModelExchangedDemandCoinAmount = matchResult.ExchangedDemandCoinAmt.ToDec().QuoInt64(1000000)
+			deltaResult.DecModelExchangedDemandCoinAmount = matchResultsDec[i].ExchangedDemandCoinAmt.QuoInt64(1000000)
 		}
 
-		if delta.OfferCoinAmt.GT(deltaResult.MaxDeltaOfferCoinAmount) {
-			deltaResult.MaxDeltaOfferCoinAmount = delta.OfferCoinAmt
-			deltaResult.IntModelOfferCoinAmount = matchResult.OfferCoinAmt
+		if delta.TransactedCoinAmt.GT(deltaResult.MaxDeltaTransactedCoinAmount) {
+			deltaResult.MaxDeltaTransactedCoinAmount = delta.TransactedCoinAmt
+			deltaResult.IntModelTransactedCoinAmount = matchResult.TransactedCoinAmt.ToDec().QuoInt64(1000000)
+			deltaResult.DecModelTransactedCoinAmount = matchResultsDec[i].TransactedCoinAmt.QuoInt64(1000000)
 		}
 
-		if delta.OfferCoinFeeAmt.GT(deltaResult.MaxDeltaFeeCoinAmount) {
-			deltaResult.MaxDeltaFeeCoinAmount = delta.OfferCoinFeeAmt
-			deltaResult.IntModelFeeCoinAmount = matchResult.OfferCoinFeeAmt
+		if delta.OfferCoinFeeAmt.GT(deltaResult.MaxDeltaOfferCoinFeeAmount) {
+			deltaResult.MaxDeltaOfferCoinFeeAmount = delta.OfferCoinFeeAmt
+			deltaResult.IntModelOfferCoinFeeAmount = matchResult.OfferCoinFeeAmt.ToDec().QuoInt64(1000000)
+			deltaResult.DecModelOfferCoinFeeAmount = matchResultsDec[i].OfferCoinFeeAmt.QuoInt64(1000000)
+		}
+
+		if delta.ExchangedCoinFeeAmt.GT(deltaResult.MaxDeltaExchangedCoinFeeAmount) {
+			deltaResult.MaxDeltaExchangedCoinFeeAmount = delta.ExchangedCoinFeeAmt
+			deltaResult.IntModelExchangedCoinFeeAmount = matchResult.ExchangedCoinFeeAmt.ToDec().QuoInt64(1000000)
+			deltaResult.DecModelExchangedCoinFeeAmount = matchResultsDec[i].ExchangedCoinFeeAmt.QuoInt64(1000000)
 		}
 
 		//OfferCoinAmtErrorRatio := sdk.ZeroDec()
 		//TransactedCoinAmtErrorRatio := sdk.ZeroDec()
 		//ExchangedDemandCoinAmtErrorRatio := sdk.ZeroDec()
-		//if !matchResult.OfferCoinAmt.IsZero() && !matchResultDecs[i].OfferCoinAmt.IsZero() {
-		//	OfferCoinAmtErrorRatio = matchResultDecs[i].OfferCoinAmt.QuoTruncate(matchResult.OfferCoinAmt.ToDec())
+		//if !matchResult.OfferCoinAmt.IsZero() && !matchResultsDec[i].OfferCoinAmt.IsZero() {
+		//	OfferCoinAmtErrorRatio = matchResultsDec[i].OfferCoinAmt.QuoTruncate(matchResult.OfferCoinAmt.ToDec())
 		//}
-		//if !matchResult.TransactedCoinAmt.IsZero() && !matchResultDecs[i].TransactedCoinAmt.IsZero() {
-		//	TransactedCoinAmtErrorRatio = matchResultDecs[i].TransactedCoinAmt.QuoTruncate(matchResult.TransactedCoinAmt.ToDec())
+		//if !matchResult.TransactedCoinAmt.IsZero() && !matchResultsDec[i].TransactedCoinAmt.IsZero() {
+		//	TransactedCoinAmtErrorRatio = matchResultsDec[i].TransactedCoinAmt.QuoTruncate(matchResult.TransactedCoinAmt.ToDec())
 		//}
-		//if !matchResult.ExchangedDemandCoinAmt.IsZero() && !matchResultDecs[i].ExchangedDemandCoinAmt.IsZero() {
-		//	ExchangedDemandCoinAmtErrorRatio = matchResultDecs[i].ExchangedDemandCoinAmt.QuoTruncate(matchResult.ExchangedDemandCoinAmt.ToDec())
+		//if !matchResult.ExchangedDemandCoinAmt.IsZero() && !matchResultsDec[i].ExchangedDemandCoinAmt.IsZero() {
+		//	ExchangedDemandCoinAmtErrorRatio = matchResultsDec[i].ExchangedDemandCoinAmt.QuoTruncate(matchResult.ExchangedDemandCoinAmt.ToDec())
 		//}
 		//fmt.Println("matchResult", i, matchResult.OrderPrice, delta.OfferCoinAmt, delta.TransactedCoinAmt, delta.ExchangedDemandCoinAmt,
 		//	delta.OfferCoinFeeAmt, delta.ExchangedCoinFeeAmt, OfferCoinAmtErrorRatio, TransactedCoinAmtErrorRatio, ExchangedDemandCoinAmtErrorRatio)
 
 	}
-	fmt.Println(deltaResult)
 	return deltaResult
 }
 
@@ -778,11 +784,14 @@ func CalculateSwap(direction int, X, Y, orderPrice, lastOrderPrice sdk.Dec, orde
 
 	//r.SwapPrice = X.Add(r.EX).Quo(Y.Add(r.EY)) // legacy constant product model
 	r.SwapPrice = X.Add(r.EX.MulRaw(2).ToDec()).Quo(Y.Add(r.EY.MulRaw(2).ToDec())) // newSwapPriceModel
+	//fmt.Println("		CalculateSwap SwapPrice", X, r.EX, r.EY, r.EX.MulRaw(2).ToDec(), X.Add(r.EX.MulRaw(2).ToDec()), Y, r.EY.MulRaw(2).ToDec(), Y.Add(r.EY.MulRaw(2).ToDec()), X.Add(r.EX.MulRaw(2).ToDec()).Quo(Y.Add(r.EY.MulRaw(2).ToDec())))
 
 	// Normalization to an integrator for easy determination of exactMatch. this decimal error will be minimize
 	if direction == Increase {
 		//r.PoolY = Y.Sub(X.Quo(r.SwapPrice))  // legacy constant product model
 		r.PoolY = r.SwapPrice.Mul(Y).Sub(X).Quo(r.SwapPrice.MulInt64(2)).TruncateInt() // newSwapPriceModel
+		//fmt.Println("		CalculateSwap", direction, lastOrderPrice, r.SwapPrice, orderPrice, r.PoolY, r.OriginalEX, r.OriginalEY, X, Y)
+		//fmt.Println("		CalculateSwap", lastOrderPrice.LT(r.SwapPrice), r.SwapPrice.LT(orderPrice), !r.PoolY.IsNegative())
 		if lastOrderPrice.LT(r.SwapPrice) && r.SwapPrice.LT(orderPrice) && !r.PoolY.IsNegative() {
 			if r.EX.IsZero() && r.EY.IsZero() {
 				r.MatchType = NoMatch
@@ -793,6 +802,8 @@ func CalculateSwap(direction int, X, Y, orderPrice, lastOrderPrice sdk.Dec, orde
 	} else if direction == Decrease {
 		//r.PoolX = X.Sub(Y.Mul(r.SwapPrice))   // legacy constant product model
 		r.PoolX = X.Sub(r.SwapPrice.Mul(Y)).QuoInt64(2).TruncateInt() // newSwapPriceModel
+		//fmt.Println("		CalculateSwap", direction, lastOrderPrice, r.SwapPrice, orderPrice, r.PoolX, r.OriginalEX, r.OriginalEY, X, Y)
+		//fmt.Println("		CalculateSwap", orderPrice.LT(r.SwapPrice), r.SwapPrice.LT(lastOrderPrice), r.PoolX.GTE(sdk.ZeroInt()))
 		if orderPrice.LT(r.SwapPrice) && r.SwapPrice.LT(lastOrderPrice) && r.PoolX.GTE(sdk.ZeroInt()) {
 			if r.EX.IsZero() && r.EY.IsZero() {
 				r.MatchType = NoMatch
@@ -847,12 +858,18 @@ func CalculateSwapDec(direction int, X, Y, orderPrice, lastOrderPrice sdk.Dec, o
 	r.EY = r.OriginalEY.ToDec()
 
 	//r.SwapPrice = X.Add(r.EX).Quo(Y.Add(r.EY)) // legacy constant product model
-	r.SwapPrice = X.Add(r.EX.Mul(sdk.NewDec(2)).Quo(Y.Add(r.EY.Mul(sdk.NewDec(2))))) // newSwapPriceModel
+	r.SwapPrice = X.Add(r.EX.MulInt64(2)).Quo(Y.Add(r.EY.MulInt64(2))) // newSwapPriceModel
+	//fmt.Println("		CalculateSwapDec SwapPrice", X, r.EX, r.EY, r.EX.MulInt64(2), X.Add(r.EX.MulInt64(2)), Y, r.EY.MulInt64(2), Y.Add(r.EY.MulInt64(2)), X.Add(r.EX.MulInt64(2)).Quo(Y.Add(r.EY.MulInt64(2))))
+	//fmt.Println("		CalculateSwapDec SwapPrice", X, r.EX, r.EY, r.EX.MulInt64(2), X.Add(r.EX.MulInt64(2)), Y, r.EY.MulInt64(2), Y.Add(r.EY.MulInt64(2)), X.Add(r.EX.MulInt64(2)).QuoTruncate(Y.Add(r.EY.MulInt64(2))))
+	//fmt.Println("		CalculateSwapDec SwapPrice", X, r.EX, r.EY, r.EX.MulInt64(2), X.Add(r.EX.MulInt64(2)), Y, r.EY.MulInt64(2), Y.Add(r.EY.MulInt64(2)), X.Add(r.EX.MulInt64(2)).QuoRoundUp(Y.Add(r.EY.MulInt64(2))))
+
 
 	// Normalization to an integrator for easy determination of exactMatch. this decimal error will be minimize
 	if direction == Increase {
 		//r.PoolY = Y.Sub(X.Quo(r.SwapPrice))  // legacy constant product model
-		r.PoolY = r.SwapPrice.Mul(Y).Sub(X).Quo(r.SwapPrice.Mul(sdk.NewDec(2))) // newSwapPriceModel
+		r.PoolY = r.SwapPrice.Mul(Y).Sub(X).QuoTruncate(r.SwapPrice.MulInt64(2)).TruncateDec() // newSwapPriceModel
+		//fmt.Println("		CalculateSwapDec", direction, lastOrderPrice, r.SwapPrice, orderPrice, r.PoolY, r.OriginalEX, r.OriginalEY, X, Y)
+		//fmt.Println("		CalculateSwapDec", lastOrderPrice.LT(r.SwapPrice), r.SwapPrice.LT(orderPrice), !r.PoolY.IsNegative())
 		if lastOrderPrice.LT(r.SwapPrice) && r.SwapPrice.LT(orderPrice) && !r.PoolY.IsNegative() {
 			if r.EX.IsZero() && r.EY.IsZero() {
 				r.MatchType = NoMatch
@@ -862,7 +879,9 @@ func CalculateSwapDec(direction int, X, Y, orderPrice, lastOrderPrice sdk.Dec, o
 		}
 	} else if direction == Decrease {
 		//r.PoolX = X.Sub(Y.Mul(r.SwapPrice))   // legacy constant product model
-		r.PoolX = X.Sub(r.SwapPrice.Mul(Y)).QuoInt64(2) // newSwapPriceModel
+		r.PoolX = X.Sub(r.SwapPrice.Mul(Y)).QuoInt64(2).TruncateDec() // newSwapPriceModel
+		//fmt.Println("		CalculateSwapDec", direction, lastOrderPrice, r.SwapPrice, orderPrice, r.PoolX, r.OriginalEX, r.OriginalEY, X, Y)
+		//fmt.Println("		CalculateSwapDec", lastOrderPrice.LT(r.SwapPrice), r.SwapPrice.LT(orderPrice), !r.PoolY.IsNegative())
 		if orderPrice.LT(r.SwapPrice) && r.SwapPrice.LT(lastOrderPrice) && r.PoolX.GTE(sdk.ZeroDec()) {
 			if r.EX.IsZero() && r.EY.IsZero() {
 				r.MatchType = NoMatch
@@ -880,27 +899,27 @@ func CalculateSwapDec(direction int, X, Y, orderPrice, lastOrderPrice sdk.Dec, o
 		// When calculating the Pool value, conservatively Truncated decimal, so Ceil it to reduce the decimal error
 		if direction == Increase {
 			//r.PoolY = Y.Sub(X.Quo(r.SwapPrice))  // legacy constant product model
-			r.PoolY = r.SwapPrice.Mul(Y).Sub(X).Quo(r.SwapPrice.Mul(sdk.NewDec(2))) // newSwapPriceModel
-			r.EX = MinDec(r.EX, r.EY.Add(r.PoolY).Mul(r.SwapPrice))
-			r.EY = MaxDec(MinDec(r.EY, r.EX.Quo(r.SwapPrice).Sub(r.PoolY)), sdk.ZeroDec())
+			r.PoolY = r.SwapPrice.Mul(Y).Sub(X).QuoTruncate(r.SwapPrice.MulInt64(2)) // newSwapPriceModel
+			r.EX = MinDec(r.EX, r.EY.Add(r.PoolY).MulTruncate(r.SwapPrice))
+			r.EY = MaxDec(MinDec(r.EY, r.EX.QuoTruncate(r.SwapPrice).Sub(r.PoolY)), sdk.ZeroDec())
 		} else if direction == Decrease {
 			//r.PoolX = X.Sub(Y.Mul(r.SwapPrice)) // legacy constant product model
 			r.PoolX = X.Sub(r.SwapPrice.Mul(Y)).QuoInt64(2) // newSwapPriceModel
-			r.EY = MinDec(r.EY, r.EX.Add(r.PoolX).Quo(r.SwapPrice))
-			r.EX = MaxDec(MinDec(r.EX, r.EY.Mul(r.SwapPrice).Sub(r.PoolX)), sdk.ZeroDec())
+			r.EY = MinDec(r.EY, r.EX.Add(r.PoolX).QuoTruncate(r.SwapPrice))
+			r.EX = MaxDec(MinDec(r.EX, r.EY.MulTruncate(r.SwapPrice).Sub(r.PoolX)), sdk.ZeroDec())
 		}
 		r.MatchType = FractionalMatch
 	}
 
 	// Round to an integer to minimize decimal errors.
 	if direction == Increase {
-		if r.SwapPrice.LT(X.Quo(Y)) || r.PoolY.IsNegative() {
+		if r.SwapPrice.LT(X.QuoTruncate(Y)) || r.PoolY.IsNegative() {
 			r.TransactAmt = sdk.ZeroDec()
 		} else {
 			r.TransactAmt = MinDec(r.EX, r.EY.Add(r.PoolY).Mul(r.SwapPrice))
 		}
 	} else if direction == Decrease {
-		if r.SwapPrice.GT(X.Quo(Y)) || r.PoolX.LT(sdk.ZeroDec()) {
+		if r.SwapPrice.GT(X.QuoTruncate(Y)) || r.PoolX.LT(sdk.ZeroDec()) {
 			r.TransactAmt = sdk.ZeroDec()
 		} else {
 			r.TransactAmt = MinDec(r.EY, r.EX.Add(r.PoolX).Quo(r.SwapPrice))
@@ -914,17 +933,21 @@ func CalculateMatch(direction int, X, Y, currentPrice sdk.Dec, orderBook OrderBo
 	lastOrderPrice := currentPrice
 	var matchScenarioList []BatchResult
 	for _, order := range orderBook {
+		//fmt.Println("	CalculateMatch orderbook", i, order.OrderPrice, order.BuyOfferAmt, order.SellOfferAmt, lastOrderPrice)
 		if (direction == Increase && order.OrderPrice.LT(currentPrice)) ||
 			(direction == Decrease && order.OrderPrice.GT(currentPrice)) {
+			//fmt.Println("	CalculateMatch continue1, ", direction, order.OrderPrice, currentPrice, len(orderBook))
 			continue
 		} else {
 			orderPrice := order.OrderPrice
 			r := CalculateSwap(direction, X, Y, orderPrice, lastOrderPrice, orderBook)
-			// Check to see if it exceeds a value that can be a decimal error
-			if (direction == Increase && r.PoolY.ToDec().Sub(r.EX.ToDec().Quo(r.SwapPrice)).GTE(sdk.OneDec())) ||
-				(direction == Decrease && r.PoolX.ToDec().Sub(r.EY.ToDec().Mul(r.SwapPrice)).GTE(sdk.OneDec())) {
-				continue
-			}
+			//// Check to see if it exceeds a value that can be a decimal error
+			//if (direction == Increase && r.PoolY.ToDec().Sub(r.EX.ToDec().Quo(r.SwapPrice)).GTE(sdk.OneDec())) ||
+			//	(direction == Decrease && r.PoolX.ToDec().Sub(r.EY.ToDec().Mul(r.SwapPrice)).GTE(sdk.OneDec())) {
+			//	fmt.Println("	CalculateMatch continue, ", direction, r, order, order.OrderPrice, len(orderBook))
+			//	continue
+			//}
+			//fmt.Println("	CalculateMatch, ", direction, r, order.OrderPrice, len(orderBook))
 			matchScenarioList = append(matchScenarioList, r)
 			lastOrderPrice = orderPrice
 		}
@@ -936,10 +959,14 @@ func CalculateMatch(direction int, X, Y, currentPrice sdk.Dec, orderBook OrderBo
 		if s.EX.GTE(MEX) && s.EY.GTE(MEY) {
 			if s.MatchType == ExactMatch && s.TransactAmt.IsPositive() {
 				maxScenario = s
+				//fmt.Println("	CalculateMatch, MEXMEY Success break", len(matchScenarioList), s.SwapPrice, s.EX.GTE(MEX), s.EY.GTE(MEY), s.EX, MEX, s.EY, MEY)
 				break
 			} else if s.TransactAmt.GT(maxScenario.TransactAmt) {
 				maxScenario = s
 			}
+			//fmt.Println("	CalculateMatch, MEXMEY Success", len(matchScenarioList), s.SwapPrice, s.EX.GTE(MEX), s.EY.GTE(MEY), s.EX, MEX, s.EY, MEY)
+		} else {
+			//fmt.Println("	CalculateMatch, MEXMEY", len(matchScenarioList),  s.SwapPrice,  s.EX.GTE(MEX), s.EY.GTE(MEY), s.EX, MEX, s.EY, MEY)
 		}
 	}
 	maxScenario.PriceDirection = direction
@@ -951,17 +978,21 @@ func CalculateMatchDec(direction int, X, Y, currentPrice sdk.Dec, orderBook Orde
 	lastOrderPrice := currentPrice
 	var matchScenarioList []BatchResultDec
 	for _, order := range orderBook {
+		//fmt.Println("	CalculateMatchDec orderbook", i, order.OrderPrice, order.BuyOfferAmt, order.SellOfferAmt, lastOrderPrice)
 		if (direction == Increase && order.OrderPrice.LT(currentPrice)) ||
 			(direction == Decrease && order.OrderPrice.GT(currentPrice)) {
+			//fmt.Println("	CalculateMatchDec continue1, ", direction, order.OrderPrice, currentPrice, len(orderBook))
 			continue
 		} else {
 			orderPrice := order.OrderPrice
 			r := CalculateSwapDec(direction, X, Y, orderPrice, lastOrderPrice, orderBook)
-			// Check to see if it exceeds a value that can be a decimal error
-			if (direction == Increase && r.PoolY.Sub(r.EX.Quo(r.SwapPrice)).GTE(sdk.OneDec())) ||
-				(direction == Decrease && r.PoolX.Sub(r.EY.Mul(r.SwapPrice)).GTE(sdk.OneDec())) {
-				continue
-			}
+			//// Check to see if it exceeds a value that can be a decimal error
+			//if (direction == Increase && r.PoolY.GT(r.EX.TruncateDec().QuoTruncate(r.SwapPrice))) ||
+			//	(direction == Decrease && r.PoolX.GT(r.EY.TruncateDec().MulTruncate(r.SwapPrice))) {
+			//	fmt.Println("	CalculateMatchDec continue, ", direction, r, order, order.OrderPrice, len(orderBook))
+			//	continue
+			//}
+			//fmt.Println("	CalculateMatchDec, ", direction, r, order.OrderPrice, len(orderBook))
 			matchScenarioList = append(matchScenarioList, r)
 			lastOrderPrice = orderPrice
 		}
@@ -970,13 +1001,17 @@ func CalculateMatchDec(direction int, X, Y, currentPrice sdk.Dec, orderBook Orde
 	maxScenario.TransactAmt = sdk.ZeroDec()
 	for _, s := range matchScenarioList {
 		MEX, MEY := GetMustExecutableAmt(s.SwapPrice, orderBook)
-		if s.EX.GTE(MEX.ToDec()) && s.EY.GTE(MEY.ToDec()) {
+		if s.EX.RoundInt().GTE(MEX) && s.EY.RoundInt().GTE(MEY) {
 			if s.MatchType == ExactMatch && s.TransactAmt.IsPositive() {
 				maxScenario = s
+				//fmt.Println("	CalculateMatchDec, MEXMEY Success break", len(matchScenarioList),  s.SwapPrice, s.EX.GTE(MEX.ToDec()), s.EY.GTE(MEY.ToDec()), s.EX, MEX, s.EY, MEY)
 				break
 			} else if s.TransactAmt.GT(maxScenario.TransactAmt) {
 				maxScenario = s
 			}
+			//fmt.Println("	CalculateMatchDec, MEXMEY Success", len(matchScenarioList),  s.SwapPrice, s.EX.GTE(MEX.ToDec()), s.EY.GTE(MEY.ToDec()), s.EX, MEX, s.EY, MEY)
+		} else {
+			//fmt.Println("	CalculateMatchDec, MEXMEY", len(matchScenarioList), s.SwapPrice,  s.EX.GTE(MEX.ToDec()), s.EY.GTE(MEY.ToDec()), s.EX, MEX, s.EY, MEY)
 		}
 	}
 	maxScenario.PriceDirection = direction
