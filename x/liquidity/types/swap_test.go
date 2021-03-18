@@ -208,10 +208,10 @@ func TestMaxOrderRatio(t *testing.T) {
 	msgBuy := types.NewMsgSwapWithinBatch(addrs[1], poolId, DefaultSwapTypeId, offerCoin, DenomY, priceBuy, params.SwapFeeRate)
 	msgSell := types.NewMsgSwapWithinBatch(addrs[2], poolId, DefaultSwapTypeId, offerCoinY, DenomX, priceSell, params.SwapFeeRate)
 
-	_, err := simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, msgBuy, 0)
+	_, err := simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, *msgBuy, 0)
 	require.NoError(t, err)
 
-	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, msgSell, 0)
+	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, *msgSell, 0)
 	require.NoError(t, err)
 
 	// Fail case, exceed GetMaxOrderRatio orders
@@ -224,10 +224,10 @@ func TestMaxOrderRatio(t *testing.T) {
 	msgBuy = types.NewMsgSwapWithinBatch(addrs[1], poolId, DefaultSwapTypeId, offerCoin, DenomY, priceBuy, params.SwapFeeRate)
 	msgSell = types.NewMsgSwapWithinBatch(addrs[2], poolId, DefaultSwapTypeId, offerCoinY, DenomX, priceSell, params.SwapFeeRate)
 
-	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, msgBuy, 0)
+	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, *msgBuy, 0)
 	require.Equal(t, types.ErrExceededMaxOrderable, err)
 
-	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, msgSell, 0)
+	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, *msgSell, 0)
 	require.Equal(t, types.ErrExceededMaxOrderable, err)
 
 	// Success case, same GetMaxOrderRatio orders
@@ -240,10 +240,10 @@ func TestMaxOrderRatio(t *testing.T) {
 	msgBuy = types.NewMsgSwapWithinBatch(addrs[1], poolId, DefaultSwapTypeId, offerCoin, DenomY, priceBuy, params.SwapFeeRate)
 	msgSell = types.NewMsgSwapWithinBatch(addrs[2], poolId, DefaultSwapTypeId, offerCoinY, DenomX, priceSell, params.SwapFeeRate)
 
-	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, msgBuy, 0)
+	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, *msgBuy, 0)
 	require.NoError(t, err)
 
-	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, msgSell, 0)
+	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, *msgSell, 0)
 	require.NoError(t, err)
 
 	// Success case, same GetMaxOrderRatio orders
@@ -258,10 +258,10 @@ func TestMaxOrderRatio(t *testing.T) {
 	msgBuy = types.NewMsgSwapWithinBatch(addrs[1], poolId, DefaultSwapTypeId, offerCoin, DenomY, priceBuy, params.SwapFeeRate)
 	msgSell = types.NewMsgSwapWithinBatch(addrs[2], poolId, DefaultSwapTypeId, offerCoinY, DenomX, priceSell, params.SwapFeeRate)
 
-	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, msgBuy, 0)
+	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, *msgBuy, 0)
 	require.Equal(t, types.ErrExceededMaxOrderable, err)
 
-	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, msgSell, 0)
+	_, err = simapp.LiquidityKeeper.SwapLiquidityPoolToBatch(ctx, *msgSell, 0)
 	require.NoError(t, err)
 }
 

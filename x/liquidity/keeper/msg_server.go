@@ -62,7 +62,7 @@ func (k msgServer) DepositWithinBatch(goCtx context.Context, msg *types.MsgDepos
 	if !found {
 		return nil, types.ErrPoolBatchNotExists
 	}
-	batchMsg, err := k.Keeper.DepositLiquidityPoolToBatch(ctx, msg)
+	batchMsg, err := k.Keeper.DepositLiquidityPoolToBatch(ctx, *msg)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (k msgServer) WithdrawWithinBatch(goCtx context.Context, msg *types.MsgWith
 	if !found {
 		return nil, types.ErrPoolBatchNotExists
 	}
-	batchMsg, err := k.Keeper.WithdrawLiquidityPoolToBatch(ctx, msg)
+	batchMsg, err := k.Keeper.WithdrawLiquidityPoolToBatch(ctx, *msg)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (k msgServer) Swap(goCtx context.Context, msg *types.MsgSwapWithinBatch) (*
 	if !found {
 		return nil, types.ErrPoolBatchNotExists
 	}
-	batchMsg, err := k.Keeper.SwapLiquidityPoolToBatch(ctx, msg, 0)
+	batchMsg, err := k.Keeper.SwapLiquidityPoolToBatch(ctx, *msg, 0)
 	if err != nil {
 		return &types.MsgSwapWithinBatchResponse{}, err
 	}
