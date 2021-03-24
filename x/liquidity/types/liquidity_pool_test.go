@@ -6,10 +6,22 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 
 	"github.com/tendermint/liquidity/app"
 	"github.com/tendermint/liquidity/x/liquidity/types"
 )
+
+func TestPool_GetReserveAccount(t *testing.T) {
+	addr := sdk.AccAddress(ed25519.GenPrivKey().PubKey().Address())
+
+	pool := types.Pool{ReserveAccountAddress: addr.String()}
+	require.NotPanics(t, func() { pool.GetReserveAccount() })
+	require.True(t, pool.GetReserveAccount().Equals(addr))
+
+	pool.ReserveAccountAddress = ""
+	require.Panics(t, func() { pool.GetReserveAccount() })
+}
 
 func TestUnmarshalerPanics(t *testing.T) {
 	t.Run("MustUnmarshalPool", func(t *testing.T) {
