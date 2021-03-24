@@ -43,32 +43,9 @@ type Order struct {
 // OrderBook is a list of orders
 type OrderBook []Order
 
-// Len implements sort.Interface for OrderBook
-func (orderBook OrderBook) Len() int { return len(orderBook) }
-
-// Less implements sort.Interface for OrderBook
-func (orderBook OrderBook) Less(i, j int) bool {
-	return orderBook[i].Price.LT(orderBook[j].Price)
-}
-
-// Swap implements sort.Interface for OrderBook
-func (orderBook OrderBook) Swap(i, j int) { orderBook[i], orderBook[j] = orderBook[j], orderBook[i] }
-
-// increasing sort orderbook by order price
-func (orderBook OrderBook) Sort() {
-	//sort.Sort(orderBook)
-	sort.Slice(orderBook, func(i, j int) bool {
-		return orderBook[i].Price.LT(orderBook[j].Price)
-	})
-}
-
-// decreasing sort orderbook by order price
-func (orderBook OrderBook) Reverse() {
-	//sort.Reverse(orderBook)
-	sort.Slice(orderBook, func(i, j int) bool {
-		return orderBook[i].Price.GT(orderBook[j].Price)
-	})
-}
+func (orderBook OrderBook) Len() int           { return len(orderBook) }
+func (orderBook OrderBook) Less(i, j int) bool { return orderBook[i].Price.LT(orderBook[j].Price) }
+func (orderBook OrderBook) Swap(i, j int)      { orderBook[i], orderBook[j] = orderBook[j], orderBook[i] }
 
 // Get number of not matched messages on the list.
 func CountNotMatchedMsgs(swapMsgStates []*SwapMsgState) int {
@@ -100,7 +77,7 @@ func (orderMap OrderMap) SortOrderBook() (orderBook OrderBook) {
 	for _, o := range orderMap {
 		orderBook = append(orderBook, o)
 	}
-	orderBook.Sort()
+	sort.Sort(orderBook)
 	return orderBook
 }
 

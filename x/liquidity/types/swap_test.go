@@ -3,6 +3,7 @@ package types_test
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -288,7 +289,6 @@ func TestOrderBookSort(t *testing.T) {
 	}
 	// make orderbook to sort orderMap
 	orderBook := orderMap.SortOrderBook()
-	fmt.Println(orderBook)
 
 	res := orderBook.Less(0, 1)
 	require.True(t, res)
@@ -298,18 +298,15 @@ func TestOrderBookSort(t *testing.T) {
 	require.False(t, res)
 
 	orderBook.Swap(1, 2)
-	fmt.Println(orderBook)
 	require.Equal(t, c, orderBook[1].Price)
 	require.Equal(t, b, orderBook[2].Price)
 
-	orderBook.Sort()
-	fmt.Println(orderBook)
+	sort.Sort(orderBook)
 	require.Equal(t, a, orderBook[0].Price)
 	require.Equal(t, b, orderBook[1].Price)
 	require.Equal(t, c, orderBook[2].Price)
 
-	orderBook.Reverse()
-	fmt.Println(orderBook)
+	sort.Sort(sort.Reverse(orderBook))
 	require.Equal(t, a, orderBook[2].Price)
 	require.Equal(t, b, orderBook[1].Price)
 	require.Equal(t, c, orderBook[0].Price)
