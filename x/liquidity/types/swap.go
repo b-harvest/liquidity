@@ -141,7 +141,7 @@ func (orderBook OrderBook) Validate(currentPrice sdk.Dec) bool {
 		if order.BuyOfferAmt.IsPositive() && order.Price.GT(maxBuyOrderPrice) {
 			maxBuyOrderPrice = order.Price
 		}
-		if order.SellOfferAmt.IsPositive() && (order.Price.LT(minSellOrderPrice)) {
+		if order.SellOfferAmt.IsPositive() && order.Price.LT(minSellOrderPrice) {
 			minSellOrderPrice = order.Price
 		}
 	}
