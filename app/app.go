@@ -3,7 +3,10 @@ package app
 // DONTCOVER
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -470,7 +473,17 @@ func (app *LiquidityApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBloc
 
 // EndBlocker application updates every end block
 func (app *LiquidityApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
-	return app.mm.EndBlock(ctx, req)
+	responseEndBlock := app.mm.EndBlock(ctx, req)
+	// custom logic for extracting states for incentivized testnet scoring, statistic
+	bankStates := app.BankKeeper.ExportGenesis(ctx)
+	bankStatesJson, _ := json.MarshalIndent(bankStates, "", "  ")
+	ioutil.WriteFile(fmt.Sprintf("%d_bank.json", ctx.BlockHeight()), bankStatesJson, 0644)
+	endBlockEventsJson, _ := json.MarshalIndent(responseEndBlock.Events, "", "  ")
+	ioutil.WriteFile(fmt.Sprintf("%d_end_block_events.json", ctx.BlockHeight()), endBlockEventsJson, 0644)
+	pools := app.LiquidityKeeper.GetAllPools(ctx)
+	poolsJson, _ := json.MarshalIndent(pools, "", "  ")
+	ioutil.WriteFile(fmt.Sprintf("%d_pools.json", ctx.BlockHeight()), poolsJson, 0644)
+	return responseEndBlock
 }
 
 // InitChainer application update at chain initialization
