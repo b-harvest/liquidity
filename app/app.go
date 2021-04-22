@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -474,9 +475,9 @@ func (app *LiquidityApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBloc
 }
 
 type LiquidityState struct {
-	BankModuleStates *banktypes.GenesisState
-	Events []abci.Event
-	Pools []liquiditytypes.Pool
+	BankModuleStates *banktypes.GenesisState `json:"bank_module_states"`
+	EndBlockEvents []abci.Event `json:"end_block_events"`
+	Pools []liquiditytypes.Pool `json:"pools"`
 }
 
 // EndBlocker application updates every end block
@@ -487,11 +488,19 @@ func (app *LiquidityApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) a
 	pools := app.LiquidityKeeper.GetAllPools(ctx)
 	liquidityState := LiquidityState{
 		BankModuleStates: bankStates,
-		Events: responseEndBlock.Events,
+		EndBlockEvents: responseEndBlock.Events,
 		Pools: pools,
 	}
+	syscall.Umask(0)
 	liquidityStateJson, _ := jsoni.Marshal(liquidityState)
-	ioutil.WriteFile(fmt.Sprintf("%d.json", ctx.BlockHeight()), liquidityStateJson, 0644)
+	dir := fmt.Sprintf("%08d", ctx.BlockHeight()/10000*10000)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		os.Mkdir(dir, 0744)
+	}
+	path := fmt.Sprintf("%s/%d.json", dir, ctx.BlockHeight())
+	if err := ioutil.WriteFile(path, liquidityStateJson, 0744); err!=nil {
+		panic(err)
+	}
 	return responseEndBlock
 }
 
