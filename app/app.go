@@ -3,7 +3,6 @@ package app
 // DONTCOVER
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -82,6 +81,7 @@ import (
 	upgradekeeper "github.com/cosmos/cosmos-sdk/x/upgrade/keeper"
 	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
 	"github.com/gorilla/mux"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/rakyll/statik/fs"
 	"github.com/spf13/cast"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -142,6 +142,8 @@ var (
 		ibctransfertypes.ModuleName:    {authtypes.Minter, authtypes.Burner},
 		liquiditytypes.ModuleName:      {authtypes.Minter, authtypes.Burner},
 	}
+
+	jsoni = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 // Verify app interface at compile time
@@ -471,18 +473,25 @@ func (app *LiquidityApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBloc
 	return app.mm.BeginBlock(ctx, req)
 }
 
+type LiquidityState struct {
+	BankModuleStates *banktypes.GenesisState
+	Events []abci.Event
+	Pools []liquiditytypes.Pool
+}
+
 // EndBlocker application updates every end block
 func (app *LiquidityApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
 	responseEndBlock := app.mm.EndBlock(ctx, req)
 	// custom logic for extracting states for incentivized testnet scoring, statistic
 	bankStates := app.BankKeeper.ExportGenesis(ctx)
-	bankStatesJson, _ := json.MarshalIndent(bankStates, "", "  ")
-	ioutil.WriteFile(fmt.Sprintf("%d_bank.json", ctx.BlockHeight()), bankStatesJson, 0644)
-	endBlockEventsJson, _ := json.MarshalIndent(responseEndBlock.Events, "", "  ")
-	ioutil.WriteFile(fmt.Sprintf("%d_end_block_events.json", ctx.BlockHeight()), endBlockEventsJson, 0644)
 	pools := app.LiquidityKeeper.GetAllPools(ctx)
-	poolsJson, _ := json.MarshalIndent(pools, "", "  ")
-	ioutil.WriteFile(fmt.Sprintf("%d_pools.json", ctx.BlockHeight()), poolsJson, 0644)
+	liquidityState := LiquidityState{
+		BankModuleStates: bankStates,
+		Events: responseEndBlock.Events,
+		Pools: pools,
+	}
+	liquidityStateJson, _ := jsoni.Marshal(liquidityState)
+	ioutil.WriteFile(fmt.Sprintf("%d.json", ctx.BlockHeight()), liquidityStateJson, 0644)
 	return responseEndBlock
 }
 
