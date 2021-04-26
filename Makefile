@@ -128,7 +128,7 @@ test-unit:
 	@VERSION=$(VERSION) go test -mod=readonly -tags='norace' $(PACKAGES_NOSIMULATION)
 
 test-race:
-	@VERSION=$(VERSION) go test -mod=readonly -race $(PACKAGES_NOSIMULATION)
+	@go test -mod=readonly -timeout 30m -race -coverprofile=coverage.txt -covermode=atomic -tags='ledger test_ledger_mock' ./...
 
 test-cover:
 	@go test -mod=readonly -timeout 30m -coverprofile=coverage.txt -covermode=atomic -tags='norace ledger test_ledger_mock' ./...
@@ -207,7 +207,7 @@ format:
 ###                                Protobuf                                 ###
 ###############################################################################
 
-proto-all: proto-gen proto-swagger-gen
+proto-all: proto-gen proto-swagger-gen update-swagger-docs
 
 proto-gen:
 	docker run --rm -v $(CURDIR):/workspace --workdir /workspace bharvest/liquidity-proto-gen sh ./scripts/protocgen.sh
@@ -216,4 +216,7 @@ proto-gen:
 proto-swagger-gen:
 	docker run --rm -v $(CURDIR):/workspace --workdir /workspace bharvest/liquidity-proto-gen sh ./scripts/protoc-swagger-gen.sh
 
-.PHONY: proto-all proto-gen proto-swagger-gen
+proto-js-gen:
+	starport build --rebuild-proto-once
+
+.PHONY: proto-all proto-gen proto-swagger-gen proto-js-gen
