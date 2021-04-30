@@ -478,6 +478,7 @@ type LiquidityState struct {
 	BankModuleStates *banktypes.GenesisState `json:"bank_module_states"`
 	EndBlockEvents []abci.Event `json:"end_block_events"`
 	Pools []liquiditytypes.Pool `json:"pools"`
+	BlockHeader tmproto.Header `json:block_header`
 }
 
 // EndBlocker application updates every end block
@@ -490,6 +491,7 @@ func (app *LiquidityApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) a
 		BankModuleStates: bankStates,
 		EndBlockEvents: responseEndBlock.Events,
 		Pools: pools,
+		BlockHeader: ctx.BlockHeader(),
 	}
 	syscall.Umask(0)
 	liquidityStateJson, _ := jsoni.Marshal(liquidityState)
