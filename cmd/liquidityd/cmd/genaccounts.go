@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -182,6 +184,146 @@ contain valid denominations. Accounts may optionally be supplied with vesting pa
 	}
 
 	cmd.Flags().String(flags.FlagHome, defaultNodeHome, "The application home directory")
+	cmd.Flags().String(flagVestingAmt, "", "amount of coins for vesting accounts")
+	cmd.Flags().Int64(flagVestingStart, 0, "schedule start time (unix epoch) for vesting accounts")
+	cmd.Flags().Int64(flagVestingEnd, 0, "schedule end time (unix epoch) for vesting accounts")
+	flags.AddQueryFlagsToCmd(cmd)
+
+	return cmd
+}
+
+// AddGenesisAccountCmd returns add-genesis-account cobra Command.
+func AddGenesisAccountsWithFileCmd(defaultNodeHome string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "add-genesis-accounts-with-file [file]",
+		Short: "Add a genesis accounts to genesis.json",
+		Long: `Add a genesis account to genesis.json. The provided account must specify
+the account addresses and a list of initial coins with file
+ex) input.txt 
+cosmos1tqlygkf4rq93dez2u32qavgav72yv9esp8l4p3|1000000uatom,400000000utest
+cosmos12ptrrrjt2vhp89d90uczgux429dzf8nqetjj8u|2000000uatom,500000000utest
+cosmos16g3k59u6qgg0zfp7thcagg7u2stk4jvvyfau86|3000000uatom,600000000utest
+`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx := client.GetClientContextFromCmd(cmd)
+			depCdc := clientCtx.JSONMarshaler
+			cdc := depCdc.(codec.Marshaler)
+
+			serverCtx := server.GetServerContextFromCmd(cmd)
+			config := serverCtx.Config
+
+			config.SetRoot(clientCtx.HomeDir)
+
+			genFile := config.GenesisFile()
+			appState, genDoc, err := genutiltypes.GenesisStateFromGenFile(genFile)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal genesis state: %w", err)
+			}
+
+			authGenState := authtypes.GetGenesisStateFromAppState(cdc, appState)
+			bankGenState := banktypes.GetGenesisStateFromAppState(depCdc, appState)
+			accs, err := authtypes.UnpackAccounts(authGenState.Accounts)
+			if err != nil {
+				return fmt.Errorf("failed to get accounts from any: %w", err)
+			}
+
+			file, err := os.Open(args[0])
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			i := 0
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				rowText := scanner.Text()
+				rowText = strings.TrimSpace(rowText)
+				if rowText == "" {
+					break
+				}
+				row := strings.Split(rowText, "|")
+				i += 1
+				fmt.Println(i, row)
+				addr, err := sdk.AccAddressFromBech32(row[0])
+				if err != nil {
+					fmt.Println(err, strings.Split(scanner.Text(), " "))
+					inBuf := bufio.NewReader(cmd.InOrStdin())
+					keyringBackend, _ := cmd.Flags().GetString(flags.FlagKeyringBackend)
+
+					// attempt to lookup address from Keybase if no address was provided
+					kb, err := keyring.New(sdk.KeyringServiceName(), keyringBackend, clientCtx.HomeDir, inBuf)
+					if err != nil {
+						return err
+					}
+
+					info, err := kb.Key(row[0])
+					if err != nil {
+						return fmt.Errorf("failed to get address from Keybase: %w", err)
+					}
+
+					addr = info.GetAddress()
+				}
+
+				coins, err := sdk.ParseCoinsNormalized(row[1])
+				if err != nil {
+					return fmt.Errorf("failed to parse coins: %w", err)
+				}
+
+				if err != nil {
+					return fmt.Errorf("failed to parse vesting amount: %w", err)
+				}
+
+				// create concrete account type based on input parameters
+				var genAccount authtypes.GenesisAccount
+
+				balances := banktypes.Balance{Address: addr.String(), Coins: coins.Sort()}
+				baseAccount := authtypes.NewBaseAccount(addr, nil, 0, 0)
+				genAccount = baseAccount
+
+				if err := genAccount.Validate(); err != nil {
+					return fmt.Errorf("failed to validate new genesis account: %w", err)
+				}
+
+				if accs.Contains(addr) {
+					return fmt.Errorf("cannot add account at existing address %s", addr)
+				}
+
+				// Add the new account to the set of genesis accounts and sanitize the
+				// accounts afterwards.
+				accs = append(accs, genAccount)
+				accs = authtypes.SanitizeGenesisAccounts(accs)
+
+				genAccs, err := authtypes.PackAccounts(accs)
+				if err != nil {
+					return fmt.Errorf("failed to convert accounts into any's: %w", err)
+				}
+				authGenState.Accounts = genAccs
+
+				bankGenState.Balances = append(bankGenState.Balances, balances)
+				bankGenState.Balances = banktypes.SanitizeGenesisBalances(bankGenState.Balances)
+				bankGenState.Supply = bankGenState.Supply.Add(balances.Coins...)
+			}
+			authGenStateBz, err := cdc.MarshalJSON(&authGenState)
+			if err != nil {
+				return fmt.Errorf("failed to marshal auth genesis state: %w", err)
+			}
+			appState[authtypes.ModuleName] = authGenStateBz
+			bankGenStateBz, err := cdc.MarshalJSON(bankGenState)
+			if err != nil {
+				return fmt.Errorf("failed to marshal bank genesis state: %w", err)
+			}
+			appState[banktypes.ModuleName] = bankGenStateBz
+			appStateJSON, err := json.Marshal(appState)
+			if err != nil {
+				return fmt.Errorf("failed to marshal application genesis state: %w", err)
+			}
+			genDoc.AppState = appStateJSON
+			return genutil.ExportGenesisFile(genDoc, genFile)
+		},
+	}
+
+	cmd.Flags().String(flags.FlagHome, defaultNodeHome, "The application home directory")
+	cmd.Flags().String(flags.FlagKeyringBackend, flags.DefaultKeyringBackend, "Select keyring's backend (os|file|kwallet|pass|test)")
 	cmd.Flags().String(flagVestingAmt, "", "amount of coins for vesting accounts")
 	cmd.Flags().Int64(flagVestingStart, 0, "schedule start time (unix epoch) for vesting accounts")
 	cmd.Flags().Int64(flagVestingEnd, 0, "schedule end time (unix epoch) for vesting accounts")
