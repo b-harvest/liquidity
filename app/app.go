@@ -5,11 +5,9 @@ package app
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
-	"syscall"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -476,9 +474,9 @@ func (app *LiquidityApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBloc
 
 type LiquidityState struct {
 	BankModuleStates *banktypes.GenesisState `json:"bank_module_states"`
-	EndBlockEvents []abci.Event `json:"end_block_events"`
-	Pools []liquiditytypes.Pool `json:"pools"`
-	BlockHeader tmproto.Header `json:block_header`
+	EndBlockEvents   []abci.Event            `json:"end_block_events"`
+	Pools            []liquiditytypes.Pool   `json:"pools"`
+	BlockHeader      tmproto.Header          `json:"block_header"`
 }
 
 // EndBlocker application updates every end block
@@ -489,18 +487,19 @@ func (app *LiquidityApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) a
 	pools := app.LiquidityKeeper.GetAllPools(ctx)
 	liquidityState := LiquidityState{
 		BankModuleStates: bankStates,
-		EndBlockEvents: responseEndBlock.Events,
-		Pools: pools,
-		BlockHeader: ctx.BlockHeader(),
+		EndBlockEvents:   responseEndBlock.Events,
+		Pools:            pools,
+		BlockHeader:      ctx.BlockHeader(),
 	}
-	syscall.Umask(0)
-	liquidityStateJson, _ := jsoni.Marshal(liquidityState)
 	dir := fmt.Sprintf("%08d", ctx.BlockHeight()/10000*10000)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		os.Mkdir(dir, 0744)
+	_ = os.MkdirAll(dir, 0755)
+	path := filepath.Join(dir, fmt.Sprintf("%d.json", ctx.BlockHeight()))
+	f, err := os.Create(path)
+	if err != nil {
+		panic(err)
 	}
-	path := fmt.Sprintf("%s/%d.json", dir, ctx.BlockHeight())
-	if err := ioutil.WriteFile(path, liquidityStateJson, 0744); err!=nil {
+	defer f.Close()
+	if err := jsoni.NewEncoder(f).Encode(liquidityState); err != nil {
 		panic(err)
 	}
 	return responseEndBlock
