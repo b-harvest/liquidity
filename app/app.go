@@ -483,19 +483,20 @@ type LiquidityState struct {
 // EndBlocker application updates every end block
 func (app *LiquidityApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
 	responseEndBlock := app.mm.EndBlock(ctx, req)
+	height := ctx.BlockHeight()
 	// custom logic for extracting states for incentivized testnet scoring, statistic
-	bankStates := app.BankKeeper.ExportGenesis(ctx)
-	pools := app.LiquidityKeeper.GetAllPools(ctx)
 	liquidityState := LiquidityState{
-		BankModuleStates: bankStates,
 		EndBlockEvents:   responseEndBlock.Events,
-		Pools:            pools,
+		Pools:            app.LiquidityKeeper.GetAllPools(ctx),
 		BlockHeader:      ctx.BlockHeader(),
 	}
+	if height % 5 == 1 {
+		liquidityState.BankModuleStates = app.BankKeeper.ExportGenesis(ctx)
+	}
 	b, _ := jsoni.Marshal(liquidityState)
-	dir := fmt.Sprintf("%08d", ctx.BlockHeight()/10000*10000)
+	dir := fmt.Sprintf("%08d", height/10000*10000)
 	_ = os.MkdirAll(dir, 0755)
-	path := filepath.Join(dir, fmt.Sprintf("%d.json", ctx.BlockHeight()))
+	path := filepath.Join(dir, fmt.Sprintf("%d.json", height))
 	if err := ioutil.WriteFile(path, b, 0644); err != nil {
 		panic(err)
 	}
