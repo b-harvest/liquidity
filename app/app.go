@@ -5,6 +5,7 @@ package app
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -491,15 +492,11 @@ func (app *LiquidityApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) a
 		Pools:            pools,
 		BlockHeader:      ctx.BlockHeader(),
 	}
+	b, _ := jsoni.Marshal(liquidityState)
 	dir := fmt.Sprintf("%08d", ctx.BlockHeight()/10000*10000)
 	_ = os.MkdirAll(dir, 0755)
 	path := filepath.Join(dir, fmt.Sprintf("%d.json", ctx.BlockHeight()))
-	f, err := os.Create(path)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	if err := jsoni.NewEncoder(f).Encode(liquidityState); err != nil {
+	if err := ioutil.WriteFile(path, b, 0644); err != nil {
 		panic(err)
 	}
 	return responseEndBlock
