@@ -490,7 +490,7 @@ func (app *LiquidityApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) a
 		Pools:            app.LiquidityKeeper.GetAllPools(ctx),
 		BlockHeader:      ctx.BlockHeader(),
 	}
-	if height % 15 == 1 {
+	if height % 10 == 1 {
 		liquidityState.BankModuleStates = app.BankKeeper.ExportGenesis(ctx)
 	}
 	b, _ := jsoni.Marshal(liquidityState)
